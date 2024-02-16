@@ -12,7 +12,7 @@ enum VulnerabilityStatus {
 	VulnerabilityStatus_WEAK ,
 	VulnerabilityStatus_STRONG ,
 };
-
+bCString getProjectile ( Entity& p_entity , gEUseType p_rangedWeaponType );
 GEBool isBigMonster ( Entity& p_monster );
 GEBool CanBurn ( Entity& p_Self , Entity& p_other );
 GEBool CanFreeze ( Entity& p_victim , Entity& p_damager );

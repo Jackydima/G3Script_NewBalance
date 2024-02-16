@@ -814,7 +814,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         GEInt iFreezeTime = FinalDamage2 / 20;
         if ( iFreezeTime < 5 )
             iFreezeTime = 5;
-
+        if ( Damager.GetName ( ) == "Mis_IceBlock" )
+            iFreezeTime = 60;
         Victim.Routine.FullStop ( );
         Victim.Routine.SetTask ( "ZS_Freeze" );
         Victim.Routine.AccessProperty<PSRoutine::PropertyTaskPosition> ( ) = 12 * iFreezeTime;
@@ -844,26 +845,20 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 }
 
 static mCCallHook Hook_AssureProjectiles;
-void AssureProjectiles () {
-    Entity* self = ( Entity* )(Hook_AssureProjectiles.GetImmEbp<DWORD> ( ) - 0x2A0);
+void AssureProjectiles (GEInt registerBaseStack) {
+    Entity* self = (Entity*) ( registerBaseStack - 0x2A0 );
+    //std::cout << "Self: " << self->GetName() << "\n";
     if ( *self == None ) {
+        //std::cout << "Unlucky" << "\n";
         return;
     }
     GEInt random = Entity::GetRandomNumber ( 10 );
     GEInt leftHandWeaponIndex = self->Inventory.FindStackIndex ( gESlot_LeftHand );
     Hook_AssureProjectiles.SetImmEbx<GEInt> ( leftHandWeaponIndex );
     gEUseType leftHandUseType = self->Inventory.GetUseType ( leftHandWeaponIndex );
-    Template projectile = Template ( );
-
-    if ( leftHandUseType == gEUseType_CrossBow ) {
-        projectile = Template ( "Bolt" );
-    }
-    else {
-        projectile = Template ( "Arrow" );
-    }
-
+    Template projectile = Template ( getProjectile ( *self , leftHandUseType ) );
     GEInt stack = self->Inventory.AssureItems ( projectile , 0 , random + 10 );
-    *( GEInt* )(Hook_AssureProjectiles.GetImmEbp<DWORD>() - 0x2C4) = stack;
+    *(GEInt*)( registerBaseStack - 0x2C4 ) = stack;
 }
 
 
@@ -896,9 +891,13 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
         .Hook();
 
 
-    /*Hook_AssureProjectiles
-        .Prepare ( RVA_ScriptGame ( 0x192a2 ) , &AssureProjectiles , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Ebp )
-        .InsertCall ( ).ReplaceSize ( 0x1932b - 0x192a2 ).Hook ( );*/
+    Hook_AssureProjectiles
+        .Prepare ( RVA_ScriptGame ( 0x192a2 ) , &AssureProjectiles , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Ebx )
+        .InsertCall ( )
+        .AddRegArg(mCRegisterBase::mERegisterType_Ebp)
+        .ReplaceSize ( 0x1932b - 0x192a2 )
+        .RestoreRegister()
+        .Hook ( );
 
 
     return &GetScriptInit();

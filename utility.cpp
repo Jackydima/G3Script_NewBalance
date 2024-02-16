@@ -1,6 +1,50 @@
 #include "utility.h"
 
 
+GEInt getPowerLevel ( Entity& p_entity ) {
+    Entity player = Entity::GetPlayer ( );
+    GEInt level = p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) + player.NPC.GetProperty<PSNpc::PropertyLevel> ( );
+    if ( level > p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) )
+        level = p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( );
+    return level;
+}
+
+bCString getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
+    GEInt powerLevel = getPowerLevel ( p_entity );
+    gEPoliticalAlignment aligmnent = p_entity.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( );
+    gESpecies targetSpecies = p_entity.NPC.GetCurrentTarget ( ).NPC.GetProperty<PSNpc::PropertySpecies> ( );
+    GEInt random = Entity::GetRandomNumber ( 100 );
+
+    if ( p_rangedWeaponType == gEUseType_CrossBow ) {
+        if ( powerLevel >= 25 ) {
+            return "Bolt_Sharp";
+        }
+        return "Bolt";
+    }
+    else if ( p_rangedWeaponType == gEUseType_Bow ) {
+        if ( p_entity.GetName ( ) == "Jorn" ) // And add after quest!
+            return "ExplosiveArrow";
+        if ( targetSpecies == gESpecies_FireGolem || targetSpecies == gESpecies_Golem || targetSpecies == gESpecies_IceGolem || targetSpecies == gESpecies_Skeleton )
+            return "BluntArrow";
+        if ( aligmnent == gEPoliticalAlignment_Ass || aligmnent == gEPoliticalAlignment_Nom ) 
+            return "PoisonArrow";
+        if ( aligmnent == gEPoliticalAlignment_Nrd )
+            return "Arrow_ore";
+        if ( powerLevel >= 30 ) {
+            if ( aligmnent == gEPoliticalAlignment_Orc ) {
+                if ( random <= 20 ) 
+                    return "SharpArrow";
+                return "GoldArrow";
+            }
+            if ( random <= 20 ) {
+                return "BluntArrow";
+            }
+            return "FireArrow";
+        }
+        return "Arrow";
+    }
+}
+
 
 GEBool isBigMonster ( Entity& p_monster ) {
     gCScriptAdmin& ScriptAdmin = GetScriptAdmin ( );
@@ -75,6 +119,9 @@ GEBool CanBurn ( Entity& p_victim , Entity& p_damager ) {
 
 GEBool CanFreeze ( Entity& p_victim , Entity& p_damager ) {
     gESpecies victimSpecies = p_victim.NPC.GetProperty<PSNpc::PropertySpecies> ( );
+    //std::cout << "Projectilename: " << p_damager.GetName ( ) << std::endl;
+    if ( p_damager.GetName() == "Mis_IceBlock" )
+        return GETrue;
     switch ( victimSpecies ) {
     case gESpecies_Golem:
     case gESpecies_Demon:
