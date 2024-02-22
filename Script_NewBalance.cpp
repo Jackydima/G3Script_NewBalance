@@ -886,10 +886,11 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     ResetAllFix();
 
     static mCFunctionHook Hook_Assesshit;
-    Hook_Assesshit
+    /*Hook_Assesshit
         .Prepare(RVA_ScriptGame(0x2b580), &AssessHit, mCBaseHook::mEHookType_OnlyStack)
-        .Hook();
+        .Hook();*/
 
+    Hook_Assesshit.Hook ( GetScriptAdminExt ( ).GetScript ( "AssessHit" )->m_funcScript , &AssessHit , mCBaseHook::mEHookType_OnlyStack );
 
     Hook_AssureProjectiles
         .Prepare ( RVA_ScriptGame ( 0x192a2 ) , &AssureProjectiles , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Ebx )
