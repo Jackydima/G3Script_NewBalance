@@ -1,8 +1,5 @@
-#ifndef SCRIPTLEARNPOINTS_H_INCLUDED
-#define SCRIPTLEARNPOINTS_H_INCLUDED
+#pragma once
 
 #include "Script.h"
 
 gSScriptInit & GetScriptInit();
-
-#endif

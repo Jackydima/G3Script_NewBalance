@@ -6,6 +6,7 @@ GEInt getPowerLevel ( Entity& p_entity ) {
     GEInt level = p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) + player.NPC.GetProperty<PSNpc::PropertyLevel> ( );
     if ( level > p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) )
         level = p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( );
+    //std::cout << "PowerLevel of: " << p_entity.GetName ( ) << ":\t" << level << "\n";
     return level;
 }
 
@@ -193,13 +194,13 @@ GEBool CheckHandUseTypes ( gEUseType p_lHand , gEUseType p_rHand , Entity& entit
 
 GEInt GetSkillLevels ( Entity& p_entity ) {
     if ( p_entity != Entity::GetPlayer ( ) ) {
-        GEU32 npcLevel = p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( );
+        GEU32 npcLevel = getPowerLevel(p_entity);
         //std::cout << "Entity: " << p_entity.GetName ( ) << "\tLevel: " << npcLevel << std::endl;
-        if ( npcLevel > 44 )
+        if ( npcLevel > 49 )
             return 3;
-        if ( npcLevel > 29 )
+        if ( npcLevel > 34 )
             return 2;
-        if ( npcLevel > 14 )
+        if ( npcLevel > 20 )
             return 1;
         return 0;
     }
@@ -246,52 +247,25 @@ GEInt GetSkillLevels ( Entity& p_entity ) {
     if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStrength" , &p_entity , &None , 0 ) >= 250 ) {
         level += 1;
     }
-    /*
-    if ( playerUseType == gEUseType_1H ) {
-        if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_3" ) ) )
-            level = 2;
-        else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
-            level = 1;
-        if ( CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , p_entity )
-            && p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H1H_2" ) ) )
-            level += 1;
-        return level;
-    }
-    else if ( playerUseType == gEUseType_2H || playerUseType == gEUseType_Axe || playerUseType == gEUseType_Halberd ) {
-        if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_3" ) ) )
-            level = 2;
-        else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_2" ) ) )
-            level = 1;
-        return level;
-    }
-    else if ( playerUseType == gEUseType_Staff ) {
-        if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_3" ) ) )
-            level = 2;
-        if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_2" ) ) )
-            level = 1;
-        return level;
-    }
-    // Addition
-    else if ( playerUseType == gEUseType_Cast ) {
-        GEInt playerInt = p_entity.PlayerMemory.GetIntelligence();
-        if ( playerInt > 199 ) {
-            return 2;
-        }
-        if ( playerInt > 99 ) {
-            return 1;
-        }
-    }*/
+    //std::cout << "Returned PCHERO Level: " << level << "\n";
     return level; // or level
 }
 
 GEInt GetActionWeaponLevel ( Entity& p_damager , gEAction p_action ) {
     GEInt level = 0;
+    gEUseType damagerWeaponType = p_damager.Inventory.GetUseType ( p_damager.Inventory.FindStackIndex ( gESlot_RightHand ) );
     switch ( p_action ) {
     case gEAction_Attack:
+        if ( damagerWeaponType == gEUseType_2H || damagerWeaponType == gEUseType_Axe ) {
+            level = 2;
+            break;
+        }
+        level = 1;
+        break;
     case gEAction_SimpleWhirl:
+    case gEAction_GetUpAttack:
     case gEAction_WhirlAttack:
     case gEAction_PierceAttack:
-    case gEAction_GetUpAttack:
         level = 2;
         break;
     case gEAction_PowerAttack:
@@ -300,8 +274,10 @@ GEInt GetActionWeaponLevel ( Entity& p_damager , gEAction p_action ) {
             level = 3 - ( GEU32 )p_damager.Routine.GetProperty<PSRoutine::PropertyStatePosition> ( );
             break;
         }
-    case gEAction_HackAttack:
         level = 4;
+        break;
+    case gEAction_HackAttack:
+        level = 5;
         break;
     case gEAction_QuickAttack:
     case gEAction_QuickAttackR:
@@ -326,6 +302,8 @@ GEInt GetShieldLevelBonus ( Entity& p_entity ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Shield_2" ) ) )
                 level += 1;
         }
+        else if ( getPowerLevel ( p_entity ) > 34 )
+            level += 1;
     }
     return level;
 }
