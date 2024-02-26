@@ -7,10 +7,10 @@
 #include "Script.h"
 
 enum VulnerabilityStatus {
-	VulnerabilityStatus_IMMUNE ,
-	VulnerabilityStatus_REGULAR ,
-	VulnerabilityStatus_WEAK ,
-	VulnerabilityStatus_STRONG ,
+	VulnerabilityStatus_IMMUNE = 0,
+	VulnerabilityStatus_REGULAR = 1,
+	VulnerabilityStatus_WEAK = 2,
+	VulnerabilityStatus_STRONG = 3,
 };
 bCString getProjectile ( Entity& p_entity , gEUseType p_rangedWeaponType );
 GEBool isBigMonster ( Entity& p_monster );

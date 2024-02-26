@@ -504,6 +504,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Schritt 3: Angriffsart
     //
     //std::cout << "Action: " << DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) << std::endl;
+    if ( DamageTypeEntityTest ( Victim , Damager ) == VulnerabilityStatus_IMMUNE && FinalDamage2 > 5) 
+        FinalDamage2 = 5;
+
     switch ( DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) )
     {
         // Angreifer benutzt Quick-Attacke
@@ -838,6 +841,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
     */
     //Stun Protection
+    if ( DamageTypeEntityTest ( Victim , Damager ) == VulnerabilityStatus_IMMUNE )
+        return gEAction_None;
+
     if ( VictimAction == gEAction_SitKnockDown ) {
         ScriptAdmin.CallScriptFromScript ( "PipiStumble" , &Victim , &None , 0 );
         return gEAction_SitKnockDown;
@@ -934,6 +940,14 @@ void ResetAllFix() {
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x24b2a ) , 0x24b35 - 0x24b2a , currProt , &newProt );
 }
 
+void PatchCode () {
+    // b5045-b503d Call for DamageEntityTest in DoLogicalDamage removed (not ingnorig the Immune Status anymore)
+    DWORD currProt , newProt;
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0x90 , 0xb5045 - 0xb503d );
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , currProt , &newProt );
+}
+
 extern "C" __declspec( dllexport )
 gSScriptInit const * GE_STDCALL ScriptInit( void )
 {
@@ -942,7 +956,7 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     LoadSettings();
 
     ResetAllFix();
-
+    PatchCode();
     static mCFunctionHook Hook_Assesshit;
     /*Hook_Assesshit
         .Prepare(RVA_ScriptGame(0x2b580), &AssessHit, mCBaseHook::mEHookType_OnlyStack)
@@ -957,7 +971,6 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
         .ReplaceSize ( 0x1932b - 0x192a2 )
         .RestoreRegister()
         .Hook ( );
-
 
     return &GetScriptInit();
 }
