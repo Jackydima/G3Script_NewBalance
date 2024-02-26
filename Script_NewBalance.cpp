@@ -800,7 +800,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
     // Process StatusEffects and Animations:
     // CanBurn
-    if ( /*ScriptAdmin.CallScriptFromScript ( "CanBurn" , &Victim , &Damager , FinalDamage2 )*/CanBurn ( Victim , Damager ) )
+    if ( ScriptAdmin.CallScriptFromScript ( "CanBurn" , &Victim , &Damager , FinalDamage2 ) )
     {
         Victim.NPC.EnableStatusEffects ( gEStatusEffect_Burning , GETrue );
         Victim.Effect.StartRuntimeEffect ( "eff_magic_firespell_target_01" );
@@ -873,7 +873,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         Victim.NPC.EnableStatusEffects ( gEStatusEffect_Diseased , GETrue );
     }
 
-    if ( /*ScriptAdmin.CallScriptFromScript ( "CanFreeze" , &Victim , &Damager , FinalDamage2 )*/CanFreeze ( Victim , Damager ) )
+    if ( ScriptAdmin.CallScriptFromScript ( "CanFreeze" , &Victim , &Damager , FinalDamage2 ) )
     {
         GEInt iFreezeTime = FinalDamage2 / 20;
         if ( iFreezeTime < 5 )
@@ -948,11 +948,31 @@ void PatchCode () {
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , currProt , &newProt );
 }
 
+static mCFunctionHook Hook_CanBurn;
+static mCFunctionHook Hook_CanFreeze;
+GEInt CanFreezeAddition ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+    // Fix for new Spell
+    if ( a_pOtherEntity->GetName ( ) == "Mis_IceBlock" )
+        return GETrue;
+    return Hook_CanFreeze.GetOriginalFunction ( &CanFreezeAddition )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
+}
+
 extern "C" __declspec( dllexport )
 gSScriptInit const * GE_STDCALL ScriptInit( void )
 {
     // Ensure that that Script_Game.dll is loaded.
     GetScriptAdmin().LoadScriptDLL("Script_Game.dll");
+    
+    GetScriptAdmin().LoadScriptDLL("Script_G3Fixes.dll");
+    if ( !GetScriptAdmin ( ).IsScriptDLLLoaded ( "Script_G3Fixes.dll" ) ) {
+        Hook_CanBurn.Hook ( GetScriptAdminExt ( ).GetScript ( "CanBurn" )->m_funcScript , &CanBurn , mCBaseHook::mEHookType_OnlyStack );
+        Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript, &CanFreeze , mCBaseHook::mEHookType_OnlyStack );
+    }
+    else {
+        Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript , &CanFreezeAddition , mCBaseHook::mEHookType_OnlyStack );
+    }
+
+
     LoadSettings();
 
     ResetAllFix();

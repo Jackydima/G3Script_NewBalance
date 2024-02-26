@@ -75,7 +75,10 @@ GEBool isBigMonster ( Entity& p_monster ) {
 
 }
 
-GEBool CanBurn ( Entity& p_victim , Entity& p_damager ) {
+GEInt CanBurn ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+
+    INIT_SCRIPT_EXT ( p_victim , p_damager );
+    if ( p_damager == None ) return GEFalse;
     gESpecies victimSpecies = p_victim.NPC.GetProperty<PSNpc::PropertySpecies> ( );
     switch ( victimSpecies ) {
     case gESpecies_Golem:
@@ -86,23 +89,34 @@ GEBool CanBurn ( Entity& p_victim , Entity& p_damager ) {
     case gESpecies_Dragon:
         return GEFalse;
     }
-    if ( p_victim == Entity::GetPlayer ( ) && p_victim.Inventory.IsSkillActive ( Template ( "Perk_ResistHeat" ) ) )
-        return GEFalse;
-    if ( p_damager == None ) return GEFalse;
-    // If an Item hit the Victim
-    gEDamageType damageType = p_damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
     GEInt random = Entity::GetRandomNumber ( 100 );
+    gEDamageType damageType = p_damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
     GEU32 itemQuality = p_damager.Item.GetQuality ( );
+    Entity DamagerOwner = p_damager.Interaction.GetOwner ( );
+    if ( DamagerOwner == None && p_damager.Navigation.IsValid ( ) )
+    {
+        DamagerOwner = p_damager;
+    }
+    if ( ( p_victim == Entity::GetPlayer ( ) && p_victim.Inventory.IsSkillActive ( Template ( "Perk_ResistHeat" ) ) )
+        || ( p_victim != Entity::GetPlayer ( ) && getPowerLevel ( p_victim ) >= 40 ) )
+        random = static_cast< GEInt >( random * 2 );
+    // Special Resistance :O
+    if ( random >= 100 ) {
+        return GEFalse;
+    }
+
     //std::cout << "In CanBurn:\tDamageType: " << damageType << "\trandom: " << random
         //<< "\nProjectile.IsValid: " << p_damager.Projectile.IsValid () << "\titemQuality: " << itemQuality << "\n";
     if ( !p_damager.Projectile.IsValid ( ) ) {
         if ( damageType != gEDamageType_None ) {
-            if ( ( ( BYTE )itemQuality & gEItemQuality_Burning ) == gEItemQuality_Burning && random < 20 ) {
+            if ( damageType == gEDamageType_Fire ) {
                 return GETrue;
             }
-        }
-        if ( damageType == gEDamageType_Fire ) {
-            return GETrue;
+            if ( DamagerOwner != None && DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction_PowerAttack )
+                random = static_cast< GEInt >( random * 0.66 );
+            if ( ( ( BYTE )itemQuality & gEItemQuality_Burning ) == gEItemQuality_Burning && random < 26 ) {
+                return GETrue;
+            }
         }
     }
     // Missile Here
@@ -118,11 +132,14 @@ GEBool CanBurn ( Entity& p_victim , Entity& p_damager ) {
     return GEFalse;
 }
 
-GEBool CanFreeze ( Entity& p_victim , Entity& p_damager ) {
+GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+
+    INIT_SCRIPT_EXT ( p_victim , p_damager );
+    if ( p_damager == None ) return GEFalse;
+    if ( p_damager.GetName ( ) == "Mis_IceBlock" )
+        return GETrue;
     gESpecies victimSpecies = p_victim.NPC.GetProperty<PSNpc::PropertySpecies> ( );
     //std::cout << "Projectilename: " << p_damager.GetName ( ) << std::endl;
-    if ( p_damager.GetName() == "Mis_IceBlock" )
-        return GETrue;
     switch ( victimSpecies ) {
     case gESpecies_Golem:
     case gESpecies_Demon:
@@ -132,21 +149,32 @@ GEBool CanFreeze ( Entity& p_victim , Entity& p_damager ) {
     case gESpecies_Dragon:
         return GEFalse;
     }
-    if ( p_victim == Entity::GetPlayer ( ) && p_victim.Inventory.IsSkillActive ( Template ( "Perk_ResistCold" ) ) )
-        return GEFalse;
-    if ( p_damager == None ) return GEFalse;
-    // If an Item hit the Victim
-    gEDamageType damageType = p_damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
     GEInt random = Entity::GetRandomNumber ( 100 );
+    Entity DamagerOwner = p_damager.Interaction.GetOwner ( );
+    gEDamageType damageType = p_damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
     GEU32 itemQuality = p_damager.Item.GetQuality ( );
+    if ( DamagerOwner == None && p_damager.Navigation.IsValid ( ) )
+    {
+        DamagerOwner = p_damager;
+    }
+    if ( (p_victim == Entity::GetPlayer ( ) && p_victim.Inventory.IsSkillActive ( Template ( "Perk_ResistCold" ) ) )
+        || (p_victim != Entity::GetPlayer() && getPowerLevel(p_victim) >= 40 ) )
+        random = static_cast<GEInt>(random * 2.0);
+    // Special Resistance :O
+    if ( random >= 100 ) {
+        return GEFalse;
+    }
+
     if ( !p_damager.Projectile.IsValid ( ) ) {
         if ( damageType != gEDamageType_None ) {
-            if ( ( ( BYTE )itemQuality & gEItemQuality_Frozen ) == gEItemQuality_Frozen && random < 20 ) {
+            if ( damageType == gEDamageType_Ice ) {
                 return GETrue;
             }
-        }
-        if ( damageType == gEDamageType_Ice ) {
-            return GETrue;
+            if ( DamagerOwner !=None && DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction>() == gEAction_PowerAttack )
+                random = static_cast< GEInt >( random * 0.66 );
+            if ( ( ( BYTE )itemQuality & gEItemQuality_Frozen ) == gEItemQuality_Frozen && random < 26 ) {
+                return GETrue;
+            }
         }
     }
     // Missile Here
