@@ -233,7 +233,7 @@ GEInt GetSkillLevels ( Entity& p_entity ) {
     case gEUseType_Staff:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_3" ) ) )
             level = 2;
-        if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_2" ) ) )
+        else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_2" ) ) )
             level = 1;
         break;
     case gEUseType_Cast:
