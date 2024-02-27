@@ -84,51 +84,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Handle a few special cases if the player is the damager.
     if ( Player == DamagerOwner )
     {
-        // Player uses a normal projectile and the victim is humanoid (prerequisite for the Headbutt special case)
-        /*
-        * Old BluntArrow check
-        if ( IsNormalProjectile ( Damager ) && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 ) )
-        {
-            // Projectile is a Headbutt
-            if ( Damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( ) == gEDamageType_Impact )
-            {
-                GEI32 iPlayerDamage = ScriptAdmin.CallScriptFromScript ( "GetPlayerSkillDamageBonus" , &Damager , &Victim , iWeaponDamage ) + iWeaponDamage;
-
-                if ( ( ScriptAdmin.CallScriptFromScript ( "GetHitPoints" , &Victim , &None , 0 ) - iPlayerDamage ) <= 0 )
-                {
-                    if ( iPlayerDamage > 0 )
-                    {
-                        Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageAmount> ( ) = iPlayerDamage;
-                        Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageType> ( ) = Damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
-                    }
-                    //std::cout << "DamagerOwner: " << DamagerOwner.GetName ( ) << "\nVictim: " << Victim.GetName ( ) << "\n";
-                    //std::cout << "Attitude D->V: " << ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &DamagerOwner , &Victim , 0 ) << "\n";
-                    //std::cout << "Attitude V->D: " << ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Victim , &DamagerOwner , 0 ) << "\n";
-                    if ( ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Victim , &DamagerOwner , 0 ) == gEAttitude::gEAttitude_Hostile ||
-                        ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Victim , &DamagerOwner , 0 ) == gEAttitude::gEAttitude_Panic ) {
-                        Victim.Routine.FullStop ( );
-                        Victim.Routine.SetTask ( "ZS_RagDollDead" );
-                        return gEAction_LieDead;
-                    }
-
-                    Victim.Routine.FullStop ( );
-                    Victim.Routine.SetTask ( "ZS_Unconscious" );
-                    return gEAction_LieKnockDown;
-                }
-
-                if ( ( Damager.Damage.GetProperty<PSDamage::PropertyDamageHitMultiplier> ( ) ) >= 0.7f )
-                {
-                    if ( iPlayerDamage > 0 )
-                    {
-                        Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageAmount> ( ) = iPlayerDamage;
-                        Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageType> ( ) = Damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
-                    }
-                    Victim.Routine.FullStop ( );
-                    Victim.Routine.SetTask ( "ZS_SitKnockDown" );
-                    return gEAction_SitKnockDown;
-                }
-            }
-        }*/
         // Player is behind (not in his FOV) an unsuspicious (following his daily routine) NPC.
         if ( Victim.Routine.GetProperty<PSRoutine::PropertyAIMode> ( ) == gEAIMode_Routine && !Victim.IsInFOV ( DamagerOwner ) )
         {
@@ -217,8 +172,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
     GEBool isHeadshot = GEFalse;
 
-    // Headshot? -> Double damage
-    // ??? Nahkampf-Treffer am Kopf? => Schaden = Schaden * 2
+
     // PSCollisionShape.GetType() -> gCCollisionShape_PS.GetTouchType()
     if ( Damager.CollisionShape.GetType ( ) == eEPropertySetType_Animation )
     {
@@ -233,38 +187,11 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
        && !VictimItemTemplateName.Contains("Heal") && !isHeadshot ) {
         HitForce = static_cast< gEHitForce >( HitForce - GetHyperActionBonus ( VictimAction ) );
     }
-     
-    // Big Monster are harder to stun
-    // Need to rework the Hitstun calc, so it works better :)
-    /*
-    if ( DamagerOwnerAction != gEAction_PierceAttack && DamagerOwnerAction != gEAction_HackAttack && DamagerOwnerAction != gEAction_Summon && isBigMonster ( Victim ) 
-        && !isHeadshot ) {
-        HitForce = static_cast< gEHitForce >( HitForce - 1 );
-        if ( VictimAction == gEAction_SprintAttack || VictimAction == gEAction_PowerAttack ) {
-            HitForce = static_cast< gEHitForce >( HitForce - 1 );
-        }
-    }*/
     
-
     //std::cout << "Hitforce after Special Hyperarmor: " << HitForce << "\n";
     GEInt FinalDamage = iWeaponDamage;
 
-    /* Old Place of Vulnerabilities Calcs */
-    // Vulnerabilities (hooked by Damage.cpp)
-    /*if ( DamageTypeEntityTest ( Victim , Damager ) == VulnerabilityStatus_Weak )
-    {
-        FinalDamage *= 2;
-    }*/
-    /* Old 
-    switch ( DamageTypeEntityTest ( Victim , Damager ) ) {
-    case VulnerabilityStatus_WEAK:
-        FinalDamage *= 2;
-        break;
-    case VulnerabilityStatus_STRONG:
-        FinalDamage /= 2;
-    }*/
-    //std::cout << "Finaldamage after Vulnerabilities: " << FinalDamage << "\n";
-
+    // Headshot? -> Double damage
     // ??? Nahkampf-Treffer am Kopf? => Schaden = Schaden * 2
     if ( isHeadshot ) {
         FinalDamage *= 2;
@@ -715,9 +642,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
     }
 
-    // Opfer konnte nicht parieren, oder der beim Parieren erhalten Schaden hat es auf <= 0 LP gebracht.
-
-
     // Reduce Damage for unkillable NPCs (obsolete)
     GEInt iVictimHitPoints = ScriptAdmin.CallScriptFromScript ( "GetHitPoints" , &Victim , &None , 0 );
     if ( Victim != Player && !ScriptAdmin.CallScriptFromScript ( "CanBeKilled" , &Victim , &None , 0 ) )
@@ -840,32 +764,10 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         return gEAction_None;
     }
     */
-    //Stun Protection
-    if ( DamageTypeEntityTest ( Victim , Damager ) == VulnerabilityStatus_IMMUNE )
-        return gEAction_None;
-
-    if ( VictimAction == gEAction_SitKnockDown ) {
-        ScriptAdmin.CallScriptFromScript ( "PipiStumble" , &Victim , &None , 0 );
-        return gEAction_SitKnockDown;
-    }
-    // Scream or make HitEffect, but no Stumble also processes logic when you hit someone, like setting up combat mode
-    if ( HitForce <= gEHitForce_Minimal )
-    {
-        ScriptAdmin.CallScriptFromScript ( "PipiStumble" , &Victim , &None , 0 );
-        return gEAction_QuickStumble;
-    }
 
     if ( ScriptAdmin.CallScriptFromScript ( "CanBePoisoned" , &Victim , &Damager , DamagerOwnerAction == gEAction_PierceAttack || DamagerOwnerAction == gEAction_HackAttack ) )
     {
         Victim.NPC.EnableStatusEffects ( gEStatusEffect_Poisoned , GETrue );
-    }
-
-    if ( DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction_PierceAttack
-        && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 ) )
-    {
-        Victim.Routine.FullStop ( );
-        Victim.Routine.SetTask ( "ZS_PierceStumble" );
-        return gEAction_PierceStumble;
     }
 
     if ( ScriptAdmin.CallScriptFromScript ( "CanBeDiseased" , &Victim , &Damager , 0 ) )
@@ -884,6 +786,30 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         Victim.Routine.SetTask ( "ZS_Freeze" );
         Victim.Routine.AccessProperty<PSRoutine::PropertyTaskPosition> ( ) = 12 * iFreezeTime;
         return gEAction_None;
+    }
+
+    //Stun Protection
+    if ( DamageTypeEntityTest ( Victim , Damager ) == VulnerabilityStatus_IMMUNE )
+        return gEAction_None;
+
+    if ( VictimAction == gEAction_SitKnockDown ) {
+        ScriptAdmin.CallScriptFromScript ( "PipiStumble" , &Victim , &None , 0 );
+        return gEAction_SitKnockDown;
+    }
+
+    if ( DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction_PierceAttack
+        && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 ) )
+    {
+        Victim.Routine.FullStop ( );
+        Victim.Routine.SetTask ( "ZS_PierceStumble" );
+        return gEAction_PierceStumble;
+    }
+
+    // Scream or make HitEffect, but no Stumble also processes logic when you hit someone, like setting up combat mode
+    if ( HitForce <= gEHitForce_Minimal )
+    {
+        ScriptAdmin.CallScriptFromScript ( "PipiStumble" , &Victim , &None , 0 );
+        return gEAction_QuickStumble;
     }
 
     if ( /*GetHeldWeaponCategory ( Victim ) != gEWeaponCategory_None && */ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 )) //Geändert
