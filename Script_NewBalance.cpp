@@ -567,7 +567,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
     // Can parade meele?
     else if ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 ) || 
-        ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && Victim.IsInFOV ( DamagerOwner ) ))
+        ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectile(Damager) && !IsSpellContainer(Damager) ))
     {
         GEInt FinalDamage3 = FinalDamage / -2;
         // Reduce damage if parading melee with shield
@@ -888,23 +888,45 @@ void ResetAllFix() {
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x24b2a ) , 0x24b35 - 0x24b2a , currProt , &newProt );
 }
 
+/**
+* PatchCode is for small Codefixes
+* These should be changed -- Use the G3 SDK Hookfunctions to edit ASM Code.
+*/
 void PatchCode () {
-    // b5045-b503d Call for DamageEntityTest in DoLogicalDamage removed (not ingnorig the Immune Status anymore)
+    /**
+    * 0xb5045 - 0xb503d 
+    * Call for DamageEntityTest in DoLogicalDamage removed ( not ingnorig the Immune Status anymore )
+    */
     DWORD currProt , newProt;
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , PAGE_EXECUTE_READWRITE , &currProt );
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0x90 , 0xb5045 - 0xb503d );
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , currProt , &newProt );
 
-    // Remove HitProt when Entity is SitDowned
-    // 0xb51c0 - 0xb51b1
-    // Is gEAnimationState Knockdown? 
+    /** Remove HitProt when Entity is SitDowned
+    * 0xb51c0 - 0xb51b1
+    * Is gEAnimationState Knockdown? 
+    */ 
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , PAGE_EXECUTE_READWRITE , &currProt );
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0x90 , 0xb51c0 - 0xb51b1 );
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , currProt , &newProt );
+
+    /**
+    * Remove the Targetlimitation of Pierce- and Hack-Attacks on the Currentarget
+    * 0xb51db - 0xb51cd
+    */
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51cd ) , 0xb51dc - 0xb51cd , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( ( LPVOID )RVA_ScriptGame ( 0xb51cd ) , 0x90 , 0xb51d0 - 0xb51cd ); // Remove Compare for Hackattack
+    memset ( ( LPVOID )RVA_ScriptGame ( 0xb51d6 ) , 0x90 , 0xb51db - 0xb51d6 ); // Remove Jump for Hackattack and PierceAttack Compare
+    memset ( ( LPVOID )RVA_ScriptGame ( 0xb51db ) , 0xEB , 1 ); // JMP always
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51cd ) , 0xb51dc - 0xb51cd , currProt , &newProt );
 }
 
 static mCFunctionHook Hook_CanBurn;
 static mCFunctionHook Hook_CanFreeze;
+/**
+* Addition to the CanFreeze for new Spell! 
+* Always return true on IceBlock spell
+*/ 
 GEInt CanFreezeAddition ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
     // Fix for new Spell
     if ( a_pOtherEntity->GetName ( ) == "Mis_IceBlock" )
@@ -918,6 +940,7 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     // Ensure that that Script_Game.dll is loaded.
     GetScriptAdmin().LoadScriptDLL("Script_Game.dll");
     
+    // If G3Fixes is installed use them
     GetScriptAdmin().LoadScriptDLL("Script_G3Fixes.dll");
     if ( !GetScriptAdmin ( ).IsScriptDLLLoaded ( "Script_G3Fixes.dll" ) ) {
         Hook_CanBurn.Hook ( GetScriptAdminExt ( ).GetScript ( "CanBurn" )->m_funcScript , &CanBurn , mCBaseHook::mEHookType_OnlyStack );
@@ -933,9 +956,6 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     ResetAllFix();
     PatchCode();
     static mCFunctionHook Hook_Assesshit;
-    /*Hook_Assesshit
-        .Prepare(RVA_ScriptGame(0x2b580), &AssessHit, mCBaseHook::mEHookType_OnlyStack)
-        .Hook();*/
 
     Hook_Assesshit.Hook ( GetScriptAdminExt ( ).GetScript ( "AssessHit" )->m_funcScript , &AssessHit , mCBaseHook::mEHookType_OnlyStack );
 
