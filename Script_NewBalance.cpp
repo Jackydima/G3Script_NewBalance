@@ -67,6 +67,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     case gEAction_StumbleR:
     case gEAction_StumbleL:
     case gEAction_AbortAttack:
+    case gEAction_SitKnockDown:
         return DamagerOwnerAction;
     }
 
