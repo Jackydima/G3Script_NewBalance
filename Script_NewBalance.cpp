@@ -50,6 +50,26 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     gEAction DamagerOwnerAction = DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( );
     gEAction VictimAction = Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( );
 
+    /**
+    * Workaround: Changed in the FixResetAll() the Trigger of Weapons when functions like all Stumble + PipiStumble get called it would still register Weaponhits 
+    * after Trading with no stun
+    * After the fix, when Attacker are Stunning Victims the Weapon of the Victim has Attackframes even thought he got stunned before!
+    * So here it should ignore Hits, when Attacker is Stunned before but not if he got the PipiStumble.
+    */
+    switch ( DamagerOwnerAction ) {
+    case gEAction_QuickParadeStumble:
+    case gEAction_ParadeStumble:
+    case gEAction_ParadeStumbleR:
+    case gEAction_ParadeStumbleL:
+    case gEAction_HeavyParadeStumble:
+    case gEAction_QuickStumble:
+    case gEAction_Stumble:
+    case gEAction_StumbleR:
+    case gEAction_StumbleL:
+    case gEAction_AbortAttack:
+        return DamagerOwnerAction;
+    }
+
     //std::cout << "Victim gEAction: " << Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( )
        // << "\tDamager gEAction: " << DamagerOwnerAction << "\n";
     // Update damage and attacker of victim
@@ -545,7 +565,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
     }
     // Can parade meele?
-    else if ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 ) )
+    else if ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 ) || 
+        ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && Victim.IsInFOV ( DamagerOwner ) ))
     {
         GEInt FinalDamage3 = FinalDamage / -2;
         // Reduce damage if parading melee with shield
@@ -809,7 +830,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     if ( HitForce <= gEHitForce_Minimal )
     {
         ScriptAdmin.CallScriptFromScript ( "PipiStumble" , &Victim , &None , 0 );
-        return gEAction_QuickStumble;
+        return DamagerOwnerAction;
     }
 
     if ( /*GetHeldWeaponCategory ( Victim ) != gEWeaponCategory_None && */ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 )) //Geändert
@@ -872,6 +893,13 @@ void PatchCode () {
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , PAGE_EXECUTE_READWRITE , &currProt );
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0x90 , 0xb5045 - 0xb503d );
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , currProt , &newProt );
+
+    // Remove HitProt when Entity is SitDowned
+    // 0xb51c0 - 0xb51b1
+    // Is gEAnimationState Knockdown? 
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0x90 , 0xb51c0 - 0xb51b1 );
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , currProt , &newProt );
 }
 
 static mCFunctionHook Hook_CanBurn;
