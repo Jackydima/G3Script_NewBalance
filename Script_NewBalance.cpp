@@ -275,7 +275,10 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                 else if ( reqAttributeTag.Contains ( "DEX" ) ) {
                     iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + dexterity * 0.4 );
                 }
-                else if ( playerRightWeaponType == gEUseType_2H || playerRightWeaponType == gEUseType::gEUseType_Axe || playerRightWeaponType == gEUseType::gEUseType_Pickaxe ) {
+                else if ( playerRightWeaponType == gEUseType_2H ) {
+                    iAttributeBonusDamage = static_cast< GEInt >( strength * 0.55 );
+                }
+                else if ( playerRightWeaponType == gEUseType::gEUseType_Axe || playerRightWeaponType == gEUseType::gEUseType_Pickaxe ) {
                     iAttributeBonusDamage = static_cast< GEInt >(strength * 0.6);
                 }
                 else if ( playerRightWeaponType == gEUseType_Staff || reqAttributeTag.Contains ( "INT" )
