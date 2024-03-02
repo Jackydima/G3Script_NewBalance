@@ -58,6 +58,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     */
     switch ( DamagerOwnerAction ) {
     case gEAction_QuickParadeStumble:
+    case gEAction_PierceStumble:
     case gEAction_ParadeStumble:
     case gEAction_ParadeStumbleR:
     case gEAction_ParadeStumbleL:
@@ -569,8 +570,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
     }
     // Can parade meele?
-    else if ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 ) || 
-        ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectile(Damager) && !IsSpellContainer(Damager) ))
+    else if ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 ) 
+        || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectile(Damager) && !IsSpellContainer(Damager) )
+        || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade && Victim.Routine.GetStateTime ( ) < 0.05 ))
     {
         GEInt FinalDamage3 = FinalDamage / -2;
         // Reduce damage if parading melee with shield
@@ -634,6 +636,27 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }*/
 
         // Ausdauer und ggf. Lebenspunkte abziehen
+
+        //std::cout << "StateTime: " << Victim.Routine.GetStateTime ( ) << "\t AniState: " << Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() <<"\n";
+        if ( (Victim.Routine.GetStateTime ( ) < 0.05 || (DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1) ) 
+            && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade ) {
+            if ( !ScriptAdmin.CallScriptFromScript ( "IsInFistMode" , &Victim , &None , 0 ) )
+            {
+                if ( Damager.CollisionShape.GetPhysicMaterial ( ) != eEShapeMaterial_Metal
+                || ( Victim.Inventory.GetItemFromSlot ( gESlot_RightHand ).CollisionShape.GetPhysicMaterial ( ) != eEShapeMaterial_Metal ) )
+                {
+                    EffectSystem::StartEffect ( "eff_col_weaponhitslevel_metal_wood_01" , Victim );
+                }
+                else
+                {
+                    EffectSystem::StartEffect ( "eff_col_wh_01_me_me" , Victim );
+                }
+            }
+            DamagerOwner.Routine.FullStop ( );
+            DamagerOwner.Routine.SetTask ( "ZS_HeavyParadeStumble" );
+            return VictimAction;
+        }
+
         GEInt iStaminaRemaining = FinalDamage3 + ScriptAdmin.CallScriptFromScript ( "GetStaminaPoints" , &Victim , &None , 0 );
         if ( iStaminaRemaining > 0 )
             iStaminaRemaining = 0;
@@ -876,8 +899,6 @@ void AssureProjectiles (GEInt registerBaseStack) {
     *(GEInt*)( registerBaseStack - 0x2C4 ) = stack;
 }
 
-
-
 void ResetAllFix() {
     //const BYTE args[] = { 0x6A, 0x07 };
     //const size_t argsSize = sizeof ( args ) / sizeof ( BYTE );
@@ -904,6 +925,15 @@ void PatchCode () {
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , PAGE_EXECUTE_READWRITE , &currProt );
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0x90 , 0xb5045 - 0xb503d );
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , currProt , &newProt );
+
+    /**
+    * Remove the Limiter on Block for the Player via simple Bytejmp patch
+    */
+    BYTE patchcode[] = {0xE9,0x2B,0x02,0x00,0x00};
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x63365 - 0x63359 , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x90 , 0x63365 - 0x63359 );
+    memcpy ( ( LPVOID )RVA_ScriptGame ( 0x6335f ) , patchcode, sizeof(patchcode)/sizeof(BYTE));
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x63365 - 0x63359 , currProt , &newProt );
 
     /** Remove HitProt when Entity is SitDowned
     * 0xb51c0 - 0xb51b1
