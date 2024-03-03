@@ -652,8 +652,13 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                     EffectSystem::StartEffect ( "eff_col_wh_01_me_me" , Victim );
                 }
             }
-            DamagerOwner.Routine.FullStop ( );
-            DamagerOwner.Routine.SetTask ( "ZS_HeavyParadeStumble" );
+            if ( !Damager.GetName ( ).Contains ( "Fist" ) ) {
+                DamagerOwner.Routine.FullStop ( );
+                DamagerOwner.Routine.SetTask ( "ZS_HeavyParadeStumble" );
+            }
+            else {
+                DamagerOwner.Routine.SetTask ( "ZS_Stumble" );
+            }
             return VictimAction;
         }
 
