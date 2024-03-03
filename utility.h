@@ -5,6 +5,7 @@
 #include "util/Hook.h"
 //#include "util/ScriptUtil.h"
 #include "Script.h"
+#include <map>
 
 enum VulnerabilityStatus {
 	VulnerabilityStatus_IMMUNE = 0,

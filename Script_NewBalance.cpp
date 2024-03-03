@@ -7,6 +7,7 @@
 #include "Script.h"
 #include "utility.h"
 
+static std::map<bCString , GEU32> PerfektBlockTimeStampMap = {};
 
 gSScriptInit& GetScriptInit ( )
 {
@@ -25,8 +26,26 @@ GEFloat fMonsterDamageMultiplicator = 0.5;
 void LoadSettings ( ) {
     eCConfigFile config = eCConfigFile ( );
     if ( config.ReadFile ( bCString ( "monsterdamage.ini" ) ) ) {
-        fMonsterDamageMultiplicator = config.GetFloat ( bCString ( "Game" ) , bCString ( "Game.MonsterDamageMultiplicator" ) , GEFalse );
+        fMonsterDamageMultiplicator = config.GetFloat ( bCString ( "Game" ) , bCString ( "Game.MonsterDamageMultiplicator" ) , fMonsterDamageMultiplicator );
     }
+}
+
+static GEU32 getPerfectBlockLastTime ( bCString iD ) {
+    GEU32 worldTime = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
+    GEU32 retVal = 0;
+    for ( auto it = PerfektBlockTimeStampMap.cbegin ( ); it != PerfektBlockTimeStampMap.cend ( );  ) {
+        if ( worldTime - it->second > 400 )
+            PerfektBlockTimeStampMap.erase ( it++ );
+        else
+            ++it;
+    }
+    try {
+        retVal = worldTime - PerfektBlockTimeStampMap.at ( iD );
+    }
+    catch ( std::exception e ) {
+        retVal = ULONG_MAX;
+    }
+    return retVal;
 }
 
 // wird aufgerufen von DoLogicalDamage
@@ -71,7 +90,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     case gEAction_SitKnockDown:
         return DamagerOwnerAction;
     }
-
+    
     //std::cout << "Victim gEAction: " << Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( )
        // << "\tDamager gEAction: " << DamagerOwnerAction << "\n";
     // Update damage and attacker of victim
@@ -93,7 +112,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             DamagerOwnerAction = gEAction_PowerAttack;
         }
     }
-
+    GEU32 lastHit = getPerfectBlockLastTime ( Victim.GetGameEntity ( )->GetID().GetText() );
+    PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText()] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
     // Calc weapon damage (WAF-SCHD)
     GEI32 iDamageAmount = Damager.Damage.GetProperty<PSDamage::PropertyDamageAmount> ( );
     GEFloat fDamageMultiplier = Damager.Damage.GetProperty<PSDamage::PropertyDamageHitMultiplier> ( );
@@ -574,6 +594,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectile(Damager) && !IsSpellContainer(Damager) )
         || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade && Victim.Routine.GetStateTime ( ) < 0.05 ))
     {
+        /*
+            TODO: Get here the check for lastHit and ignore last
+        */
         GEInt FinalDamage3 = FinalDamage / -2;
         // Reduce damage if parading melee with shield
         if ( CheckHandUseTypes ( gEUseType_Shield , gEUseType_1H , Victim ) )
@@ -638,7 +661,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         // Ausdauer und ggf. Lebenspunkte abziehen
 
         //std::cout << "StateTime: " << Victim.Routine.GetStateTime ( ) << "\t AniState: " << Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() <<"\n";
-        if ( (Victim.Routine.GetStateTime ( ) < 0.05 || (DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1) ) 
+        //std::cout << "LastHit: " << lastHit << "\tVictimID: " << Victim.GetGameEntity()->GetID().GetText() << "\tName: " << Victim.GetName() << "\tSize Map: " << PerfektBlockTimeStampMap.size() << "\n";
+        if ( lastHit > 7 && (Victim.Routine.GetStateTime ( ) < 0.05 
+            || (DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction!=gEAction_HackAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1) ) 
             && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade ) {
             if ( !ScriptAdmin.CallScriptFromScript ( "IsInFistMode" , &Victim , &None , 0 ) )
             {
@@ -972,6 +997,28 @@ GEInt CanFreezeAddition ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity
     return Hook_CanFreeze.GetOriginalFunction ( &CanFreezeAddition )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
 }
 
+GEInt IsEvil ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+    INIT_SCRIPT_EXT ( Self , Other );
+    if ( GetScriptAdmin ( ).CallScriptFromScript ( "IsUndead" , &Self , &None , 0 ) )
+        return 1;
+    switch ( Self.NPC.GetProperty<PSNpc::PropertySpecies> ( ) ) {
+    case gESpecies_Golem:
+    case gESpecies_Demon:
+    case gESpecies_Gargoyle:
+    case gESpecies_FireGolem:
+    case gESpecies_IceGolem:
+    case gESpecies_ScorpionKing:
+    // New Check for Dragon!
+    case gESpecies_Dragon:
+        return 1;
+    default:
+        return 0;
+    }
+    //return 0;
+}
+
+
+
 extern "C" __declspec( dllexport )
 gSScriptInit const * GE_STDCALL ScriptInit( void )
 {
@@ -994,6 +1041,9 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     ResetAllFix();
     PatchCode();
     static mCFunctionHook Hook_Assesshit;
+    static mCFunctionHook Hook_IsEvil;
+
+    Hook_IsEvil.Hook ( GetScriptAdminExt ( ).GetScript ( "IsEvil" )->m_funcScript , &IsEvil );
 
     Hook_Assesshit.Hook ( GetScriptAdminExt ( ).GetScript ( "AssessHit" )->m_funcScript , &AssessHit , mCBaseHook::mEHookType_OnlyStack );
 

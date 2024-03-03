@@ -1,6 +1,5 @@
 #include "utility.h"
 
-
 GEInt getPowerLevel ( Entity& p_entity ) {
     Entity player = Entity::GetPlayer ( );
     GEInt level = p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) + player.NPC.GetProperty<PSNpc::PropertyLevel> ( );
