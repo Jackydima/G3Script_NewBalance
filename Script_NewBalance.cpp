@@ -112,8 +112,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             DamagerOwnerAction = gEAction_PowerAttack;
         }
     }
-    GEU32 lastHit = getPerfectBlockLastTime ( Victim.GetGameEntity ( )->GetID().GetText() );
-    PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText()] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
+    
     // Calc weapon damage (WAF-SCHD)
     GEI32 iDamageAmount = Damager.Damage.GetProperty<PSDamage::PropertyDamageAmount> ( );
     GEFloat fDamageMultiplier = Damager.Damage.GetProperty<PSDamage::PropertyDamageHitMultiplier> ( );
@@ -597,6 +596,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         /*
             TODO: Get here the check for lastHit and ignore last
         */
+        GEU32 lastHit = getPerfectBlockLastTime ( Victim.GetGameEntity ( )->GetID ( ).GetText ( ) );
+        PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
         GEInt FinalDamage3 = FinalDamage / -2;
         // Reduce damage if parading melee with shield
         if ( CheckHandUseTypes ( gEUseType_Shield , gEUseType_1H , Victim ) )
@@ -665,6 +666,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         if ( lastHit > 7 && (Victim.Routine.GetStateTime ( ) < 0.05 
             || (DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction!=gEAction_HackAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1) ) 
             && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade ) {
+            PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = 0;
             if ( !ScriptAdmin.CallScriptFromScript ( "IsInFistMode" , &Victim , &None , 0 ) )
             {
                 if ( Damager.CollisionShape.GetPhysicMaterial ( ) != eEShapeMaterial_Metal
@@ -886,6 +888,11 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Scream or make HitEffect, but no Stumble also processes logic when you hit someone, like setting up combat mode
     if ( HitForce <= gEHitForce_Minimal )
     {
+        if ( VictimAction == gEAction_PierceStumble ) {
+            Victim.Routine.FullStop ( );
+            Victim.Routine.SetTask ( "ZS_QuickStumble" );
+            return gEAction_QuickStumble;
+        }
         ScriptAdmin.CallScriptFromScript ( "PipiStumble" , &Victim , &None , 0 );
         return DamagerOwnerAction;
     }
