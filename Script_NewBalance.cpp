@@ -667,6 +667,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             || (DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction!=gEAction_HackAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1) ) 
             && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade ) {
             PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = 0;
+            Victim.Routine.SetStateTime ( 0.0 );
             if ( !ScriptAdmin.CallScriptFromScript ( "IsInFistMode" , &Victim , &None , 0 ) )
             {
                 if ( Damager.CollisionShape.GetPhysicMaterial ( ) != eEShapeMaterial_Metal
