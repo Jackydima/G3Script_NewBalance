@@ -438,9 +438,12 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     GEInt iProtection = ScriptAdmin.CallScriptFromScript ( "GetProtection" , &Victim , &Damager , 0 );
     //std::cout << "Protection of Victim: " << iProtection << "\n";
     // If AB Active, it reduces the Bonus of Armor with 0.2, because it used another system here
-    if ( eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing && Victim == Player )
-        iProtection *= 2; 
-
+    // Only a hotfix for now!
+    if ( eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing && Victim == Player && !Victim.NPC.IsTransformed()) {
+        iProtection *= 2;
+    }
+    if ( iProtection > 90 )
+        iProtection = 90;
     FinalDamage2 = FinalDamage - static_cast< GEInt >( FinalDamage * ( iProtection / 100.0f ) );
 
     /*
