@@ -1,5 +1,15 @@
 #include "utility.h"
 
+
+// SDK Function
+gEWeaponCategory GetHeldWeaponCategory ( Entity const& a_Entity )
+{
+    typedef gEWeaponCategory ( GE_STDCALL* mFGetHeldWeaponCategory )( Entity );
+    static mFGetHeldWeaponCategory s_fGetHeldWeaponCategory = force_cast< mFGetHeldWeaponCategory >( RVA_ScriptGame ( 0x3240 ) );
+
+    return s_fGetHeldWeaponCategory ( a_Entity );
+}
+
 GEInt getPowerLevel ( Entity& p_entity ) {
     Entity player = Entity::GetPlayer ( );
     GEInt level = p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) + player.NPC.GetProperty<PSNpc::PropertyLevel> ( );

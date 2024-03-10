@@ -593,7 +593,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
     // Can parade meele?
     else if ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 ) 
-        || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectile(Damager) && !IsSpellContainer(Damager) )
+        || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && GetHeldWeaponCategory(Victim) == gEWeaponCategory_Melee
+            && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectile ( Damager ) && !IsSpellContainer ( Damager ) )
         || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade && Victim.Routine.GetStateTime ( ) < 0.05 ))
     {
         /*

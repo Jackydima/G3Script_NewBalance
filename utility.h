@@ -6,6 +6,7 @@
 //#include "util/ScriptUtil.h"
 #include "Script.h"
 #include <map>
+#include "util/Util.h"
 
 enum VulnerabilityStatus {
 	VulnerabilityStatus_IMMUNE = 0,
@@ -13,6 +14,7 @@ enum VulnerabilityStatus {
 	VulnerabilityStatus_WEAK = 2,
 	VulnerabilityStatus_STRONG = 3,
 };
+gEWeaponCategory GetHeldWeaponCategory ( Entity const& a_Entity );
 Template getProjectile ( Entity& p_entity , gEUseType p_rangedWeaponType );
 GEBool isBigMonster ( Entity& p_monster );
 GEInt CanBurn ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs );

@@ -63,7 +63,6 @@
     <ClCompile Include="..\..\Shared\util\Hook.cpp" />
     <ClCompile Include="..\..\Shared\util\Logging.cpp" />
     <ClCompile Include="..\..\Shared\util\Memory.cpp" />
-    <ClCompile Include="..\..\Shared\util\ScriptUtil.cpp" />
     <ClCompile Include="..\..\Shared\util\Util.cpp" />
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="Script_NewBalance.cpp" />
@@ -75,7 +74,6 @@
     <ClInclude Include="..\..\Shared\util\Hook.h" />
     <ClInclude Include="..\..\Shared\util\Logging.h" />
     <ClInclude Include="..\..\Shared\util\Memory.h" />
-    <ClInclude Include="..\..\Shared\util\ScriptUtil.h" />
     <ClInclude Include="..\..\Shared\util\Util.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="Script_NewBalance.h" />

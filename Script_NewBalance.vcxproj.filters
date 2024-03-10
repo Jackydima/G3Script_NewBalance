@@ -31,9 +31,6 @@
       <Filter>util</Filter>
     </ClCompile>
     <ClCompile Include="Script_NewBalance.cpp" />
-    <ClCompile Include="..\..\Shared\util\ScriptUtil.cpp">
-      <Filter>util</Filter>
-    </ClCompile>
     <ClCompile Include="utility.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -59,9 +56,6 @@
       <Filter>util</Filter>
     </ClInclude>
     <ClInclude Include="Script_NewBalance.h" />
-    <ClInclude Include="..\..\Shared\util\ScriptUtil.h">
-      <Filter>util</Filter>
-    </ClInclude>
     <ClInclude Include="utility.h" />
   </ItemGroup>
   <ItemGroup>
