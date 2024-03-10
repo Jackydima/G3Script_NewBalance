@@ -935,9 +935,24 @@ void AssureProjectiles (GEInt registerBaseStack) {
     GEInt leftHandWeaponIndex = self->Inventory.FindStackIndex ( gESlot_LeftHand );
     Hook_AssureProjectiles.SetImmEbx<GEInt> ( leftHandWeaponIndex );
     gEUseType leftHandUseType = self->Inventory.GetUseType ( leftHandWeaponIndex );
-    Template projectile = Template ( getProjectile ( *self , leftHandUseType ) );
+    Template projectile = getProjectile ( *self , leftHandUseType );
     GEInt stack = self->Inventory.AssureItems ( projectile , 0 , random + 10 );
     *(GEInt*)( registerBaseStack - 0x2C4 ) = stack;
+}
+
+static mCFunctionHook Hook_GetAttituteSummons;
+
+GEInt GetAttitudeSummons ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+    INIT_SCRIPT_EXT ( Self , Other );
+    gCScriptAdmin& ScriptAdmin = GetScriptAdmin ( );
+
+    if ( Self.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned && Self.Party.GetPartyLeader() != Other && Self.Party.GetPartyLeader().NPC.GetCurrentTarget ( ) != Other ) {
+        return ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Self.Party.GetPartyLeader () , &Other , a_iArgs );
+    }
+    if ( Other.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned && Other.Party.GetPartyLeader ( ) != Self && Other.Party.GetPartyLeader ( ).NPC.GetCurrentTarget ( ) != Self ) {
+        return ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Self , &Other.Party.GetPartyLeader () , a_iArgs );
+    }
+    return Hook_GetAttituteSummons.GetOriginalFunction(&GetAttitudeSummons)( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
 }
 
 void ResetAllFix() {
@@ -1053,6 +1068,8 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     PatchCode();
     static mCFunctionHook Hook_Assesshit;
     static mCFunctionHook Hook_IsEvil;
+
+    Hook_GetAttituteSummons.Hook( GetScriptAdminExt ( ).GetScript ( "GetAttitude" )->m_funcScript , &GetAttitudeSummons );
 
     Hook_IsEvil.Hook ( GetScriptAdminExt ( ).GetScript ( "IsEvil" )->m_funcScript , &IsEvil );
 

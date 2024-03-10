@@ -9,39 +9,54 @@ GEInt getPowerLevel ( Entity& p_entity ) {
     return level;
 }
 
-bCString getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
+Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
     GEInt powerLevel = getPowerLevel ( p_entity );
     gEPoliticalAlignment aligmnent = p_entity.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( );
     gESpecies targetSpecies = p_entity.NPC.GetCurrentTarget ( ).NPC.GetProperty<PSNpc::PropertySpecies> ( );
     GEInt random = Entity::GetRandomNumber ( 100 );
+    Template projectile;
 
     if ( p_rangedWeaponType == gEUseType_CrossBow ) {
         if ( powerLevel >= 25 ) {
-            return "Bolt_Sharp";
+            projectile = Template("Bolt_Sharp");
+            if ( projectile.IsValid ( ) ) {
+                return projectile;
+            }
         }
-        return "Bolt";
+        return Template ("Bolt");
     }
     else if ( p_rangedWeaponType == gEUseType_Bow ) {
-        if ( p_entity.GetName ( ) == "Jorn" ) // And add after quest!
-            return "ExplosiveArrow";
-        if ( targetSpecies == gESpecies_FireGolem || targetSpecies == gESpecies_Golem || targetSpecies == gESpecies_IceGolem || targetSpecies == gESpecies_Skeleton )
-            return "BluntArrow";
-        if ( aligmnent == gEPoliticalAlignment_Ass || aligmnent == gEPoliticalAlignment_Nom ) 
-            return "PoisonArrow";
-        if ( aligmnent == gEPoliticalAlignment_Nrd )
-            return "Arrow_ore";
-        if ( powerLevel >= 30 ) {
-            if ( aligmnent == gEPoliticalAlignment_Orc ) {
-                if ( random <= 20 ) 
-                    return "SharpArrow";
-                return "GoldArrow";
-            }
-            if ( random <= 20 ) {
-                return "BluntArrow";
-            }
-            return "FireArrow";
+        if ( p_entity.GetName ( ) == "Jorn" ) {// And add after quest! 
+            projectile = Template ( "ExplosiveArrow" );
         }
-        return "Arrow";
+        else if ( targetSpecies == gESpecies_FireGolem || targetSpecies == gESpecies_Golem || targetSpecies == gESpecies_IceGolem || targetSpecies == gESpecies_Skeleton ) {
+            projectile = Template ( "BluntArrow" );
+        }
+        else if ( aligmnent == gEPoliticalAlignment_Ass || aligmnent == gEPoliticalAlignment_Nom ) {
+            projectile = Template ( "PoisonArrow" );
+        }
+        else if ( aligmnent == gEPoliticalAlignment_Nrd ) {
+            projectile = Template ( "SharpArrow" );
+        }
+        else if ( powerLevel >= 30 ) {
+            if ( aligmnent == gEPoliticalAlignment_Orc ) {
+                if ( random <= 20 ) {
+                    projectile = Template ( "SharpArrow" );
+                }
+                else {
+                    projectile = Template ( "GoldArrow" );
+                }
+            }
+            else if ( random <= 20 ) {
+                projectile = Template ( "BluntArrow");
+            }
+            else {
+                projectile = Template ( "FireArrow" );
+            }
+        }
+        if ( projectile.IsValid() )
+            return projectile;
+        return Template ("Arrow");
     }
 }
 

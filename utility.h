@@ -13,7 +13,7 @@ enum VulnerabilityStatus {
 	VulnerabilityStatus_WEAK = 2,
 	VulnerabilityStatus_STRONG = 3,
 };
-bCString getProjectile ( Entity& p_entity , gEUseType p_rangedWeaponType );
+Template getProjectile ( Entity& p_entity , gEUseType p_rangedWeaponType );
 GEBool isBigMonster ( Entity& p_monster );
 GEInt CanBurn ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs );
 GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs );
