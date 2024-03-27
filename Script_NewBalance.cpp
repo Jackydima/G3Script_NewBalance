@@ -445,7 +445,11 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
     if ( iProtection > 90 )
         iProtection = 90;
-    FinalDamage2 = FinalDamage - static_cast< GEInt >( FinalDamage * ( iProtection / 100.0f ) );
+    // If Impact Is the Damage Type, 10% of the Damage gets directly added, rest is protected by armor
+    if ( Damager.Damage.GetProperty<PSDamage::PropertyDamageType>() == gEDamageType_Impact )
+        FinalDamage2 = static_cast< GEInt >( (FinalDamage - FinalDamage * ( iProtection / 100.0f )) * 0.9f + FinalDamage * 0.1f);
+    else 
+        FinalDamage2 = static_cast< GEInt >( (FinalDamage - FinalDamage * ( iProtection / 100.0f ) ) );
 
     /*
     * Default Protection!
