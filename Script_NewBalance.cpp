@@ -196,9 +196,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         HitForce = static_cast< gEHitForce >( ActionWeaponLevel - GetShieldLevelBonus ( Victim ) );
         //std::cout << "Went in DamagerOwner Logic for getting Skills\tWeaponLevel: " << ActionWeaponLevel << "\tHitforce: "
            // << HitForce << "\tShieldLevel Bonus: " << GetShieldLevelBonus(Victim) << std::endl;
-        if ( isBigMonster ( Victim ) && (VictimAction == gEAction_PowerAttack || VictimAction == gEAction_SprintAttack) )
-            HitForce = static_cast< gEHitForce >(HitForce - 2);
+        HitForce = static_cast< gEHitForce >(HitForce - getBigMonsterHyperArmorPoints(Victim, VictimAction));
         //std::cout << "HitForce after Monster: " << HitForce << "\n";
+
         if ((GEInt)HitForce <= -2)
         {
             HitForce = gEHitForce_Minimal;
@@ -209,10 +209,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
     }
 
-
-
     GEBool isHeadshot = GEFalse;
-
 
     // PSCollisionShape.GetType() -> gCCollisionShape_PS.GetTouchType()
     if ( Damager.CollisionShape.GetType ( ) == eEPropertySetType_Animation )
@@ -488,7 +485,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     case gEAction_QuickAttack:
     case gEAction_QuickAttackR:
     case gEAction_QuickAttackL:
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 0.5f );
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 0.65f - FinalDamage * 0.15f );
         break;
 
         // Angreifer benutzt Powerattacke
@@ -498,14 +495,14 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         if ( !CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , DamagerOwner )
             || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyStatePosition> ( ) == 2 )
         {
-            FinalDamage2 *= 2;
+            FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.7f + FinalDamage * 0.3f);
         }
         break;
 
         // Angreifer benutzt Hack-Attacke
         //   => Schaden = Schaden * 2
     case gEAction_HackAttack:
-        FinalDamage2 *= 2;
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.5f + FinalDamage * 0.5f );
         break;
     }
     //std::cout << "Finaldamage2 after AttackType: " << FinalDamage2 << "\n";
@@ -602,7 +599,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         */
         GEU32 lastHit = getPerfectBlockLastTime ( Victim.GetGameEntity ( )->GetID ( ).GetText ( ) );
         PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
-        GEInt FinalDamage3 = FinalDamage / -2;
+        // Changed to Damage Numbers after Defenses
+        GEInt FinalDamage3 = FinalDamage2 / -2;
         // Reduce damage if parading melee with shield
         if ( CheckHandUseTypes ( gEUseType_Shield , gEUseType_1H , Victim ) )
         {
@@ -698,7 +696,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         if ( iStaminaRemaining > 0 )
             iStaminaRemaining = 0;
         ScriptAdmin.CallScriptFromScript ( "AddStaminaPoints" , &Victim , &None , FinalDamage3 );
-        ScriptAdmin.CallScriptFromScript ( "AddHitPoints" , &Victim , &None , iStaminaRemaining );
+        //Changed back the remaining raw Damage after Def. Reductuion and Stamina consumption
+        ScriptAdmin.CallScriptFromScript ( "AddHitPoints" , &Victim , &None , iStaminaRemaining*2 );
 
         // Wenn der bei der Parade erhaltene Schaden das Opfer nicht unter 0 HP bringt
         if ( ScriptAdmin.CallScriptFromScript ( "GetHitPoints" , &Victim , &None , 0 ) > 0 )
@@ -974,11 +973,11 @@ void ResetAllFix() {
 * These should be changed -- Use the G3 SDK Hookfunctions to edit ASM Code.
 */
 void PatchCode () {
+    DWORD currProt , newProt;
     /**
     * 0xb5045 - 0xb503d 
     * Call for DamageEntityTest in DoLogicalDamage removed ( not ingnorig the Immune Status anymore )
     */
-    DWORD currProt , newProt;
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , PAGE_EXECUTE_READWRITE , &currProt );
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0x90 , 0xb5045 - 0xb503d );
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , currProt , &newProt );
@@ -1009,6 +1008,12 @@ void PatchCode () {
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb51d6 ) , 0x90 , 0xb51db - 0xb51d6 ); // Remove Jump for Hackattack and PierceAttack Compare
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb51db ) , 0xEB , 1 ); // JMP always
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51cd ) , 0xb51dc - 0xb51cd , currProt , &newProt );
+    /*
+    //0xac2e6
+    // Test Quality Worn
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xac2e6 ) , 0xac2ec - 0xac2e6 , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( ( LPVOID )RVA_ScriptGame ( 0xac2e6 ) , 0x90 , 0xac2ec - 0xac2e6 );
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xac2e6 ) , 0xac2ec - 0xac2e6 , currProt , &newProt );*/
 }
 
 static mCFunctionHook Hook_CanBurn;

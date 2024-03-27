@@ -70,6 +70,30 @@ Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
     }
 }
 
+GEInt getBigMonsterHyperArmorPoints ( Entity& p_monster , gEAction p_monsterAction ) {
+    if ( p_monsterAction != gEAction_PowerAttack && p_monsterAction != gEAction_SprintAttack )
+        return 0;
+    if ( !isBigMonster ( p_monster ) )
+        return 0;
+    switch ( p_monster.NPC.GetProperty<PSNpc::PropertySpecies> ( ) ) {
+    case gESpecies_Demon:
+    case gESpecies_Ogre:
+        return 2;
+    case gESpecies_Troll:
+    case gESpecies_Trex:
+    case gESpecies_Shadowbeast:
+    case gESpecies_Dragon:
+    case gESpecies_Gargoyle:
+    case gESpecies_ScorpionKing:
+        return 4;
+    case gESpecies_FireGolem:
+    case gESpecies_IceGolem:
+    case gESpecies_Golem:
+        return 3;
+    default:
+        return 0;
+    }
+}
 
 GEBool isBigMonster ( Entity& p_monster ) {
     gCScriptAdmin& ScriptAdmin = GetScriptAdmin ( );
@@ -85,6 +109,7 @@ GEBool isBigMonster ( Entity& p_monster ) {
     case gESpecies_Troll:
     case gESpecies_Trex:
     case gESpecies_Shadowbeast:
+        // Dragon maybe needs to check if Action is PowerCast is active
     case gESpecies_Dragon:
     case gESpecies_Gargoyle:
     case gESpecies_ScorpionKing:
