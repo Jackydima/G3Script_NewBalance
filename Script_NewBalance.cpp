@@ -8,6 +8,8 @@
 #include "utility.h"
 
 static std::map<bCString , GEU32> PerfektBlockTimeStampMap = {};
+static GEBool useNewBalanceMagicWeapon = GEFalse;
+static GEFloat fMonsterDamageMultiplicator = 0.5;
 
 gSScriptInit& GetScriptInit ( )
 {
@@ -22,11 +24,13 @@ enum gEHitForce
     gEHitForce_Heavy = 2
 };
 
-GEFloat fMonsterDamageMultiplicator = 0.5;
 void LoadSettings ( ) {
     eCConfigFile config = eCConfigFile ( );
     if ( config.ReadFile ( bCString ( "monsterdamage.ini" ) ) ) {
         fMonsterDamageMultiplicator = config.GetFloat ( bCString ( "Game" ) , bCString ( "Game.MonsterDamageMultiplicator" ) , fMonsterDamageMultiplicator );
+    }
+    if ( config.ReadFile ( "newbalance.ini" ) ) {
+        useNewBalanceMagicWeapon = config.GetBool ( "Script" , "UseNewBalanceMagicWeapon" , useNewBalanceMagicWeapon );
     }
 }
 
@@ -1056,10 +1060,14 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
 {
     // Ensure that that Script_Game.dll is loaded.
     GetScriptAdmin().LoadScriptDLL("Script_Game.dll");
-    
+
+    LoadSettings ( );
+    ResetAllFix ( );
+    PatchCode ( );
+ 
     // If G3Fixes is installed use them
     GetScriptAdmin().LoadScriptDLL("Script_G3Fixes.dll");
-    if ( !GetScriptAdmin ( ).IsScriptDLLLoaded ( "Script_G3Fixes.dll" ) ) {
+    if ( !GetScriptAdmin ( ).IsScriptDLLLoaded ( "Script_G3Fixes.dll" ) || useNewBalanceMagicWeapon ) {
         Hook_CanBurn.Hook ( GetScriptAdminExt ( ).GetScript ( "CanBurn" )->m_funcScript , &CanBurn , mCBaseHook::mEHookType_OnlyStack );
         Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript, &CanFreeze , mCBaseHook::mEHookType_OnlyStack );
     }
@@ -1067,11 +1075,6 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
         Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript , &CanFreezeAddition , mCBaseHook::mEHookType_OnlyStack );
     }
 
-
-    LoadSettings();
-
-    ResetAllFix();
-    PatchCode();
     static mCFunctionHook Hook_Assesshit;
     static mCFunctionHook Hook_IsEvil;
 
