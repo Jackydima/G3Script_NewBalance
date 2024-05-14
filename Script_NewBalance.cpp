@@ -7,8 +7,14 @@
 #include "Script.h"
 #include "utility.h"
 
+
+// eSSetupEngine[1ea] = AB; eSSetupEngine[1eb] alternative AI
 static std::map<bCString , GEU32> PerfektBlockTimeStampMap = {};
+static std::map<bCString , GEU32> LastStaminaUsageMap = {};
 static GEBool useNewBalanceMagicWeapon = GEFalse;
+static GEBool useNewStaminaRecovery = GETrue;
+static GEU32 staminaRecoveryDelay = 20;
+static GEU32 staminaRecoveryPerTick = 13;
 static GEFloat fMonsterDamageMultiplicator = 0.5;
 
 gSScriptInit& GetScriptInit ( )
@@ -31,6 +37,9 @@ void LoadSettings ( ) {
     }
     if ( config.ReadFile ( "newbalance.ini" ) ) {
         useNewBalanceMagicWeapon = config.GetBool ( "Script" , "UseNewBalanceMagicWeapon" , useNewBalanceMagicWeapon );
+        useNewStaminaRecovery = config.GetBool ( "Script" , "UseNewStaminaRecovery" , useNewStaminaRecovery );
+        staminaRecoveryDelay = config.GetU32 ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
+        staminaRecoveryPerTick = config.GetU32 ( "Script" , "StaminaRecoveryPerTick" , staminaRecoveryPerTick );
     }
 }
 
@@ -51,6 +60,25 @@ static GEU32 getPerfectBlockLastTime ( bCString iD ) {
     }
     return retVal;
 }
+
+static GEU32 getLastStaminaUsageTime ( bCString iD ) {
+    GEU32 worldTime = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
+    GEU32 retVal = 0;
+    for ( auto it = LastStaminaUsageMap.cbegin ( ); it != LastStaminaUsageMap.cend ( ); ) {
+        if ( worldTime - it->second > 400 )
+            LastStaminaUsageMap.erase ( it++ );
+        else
+            ++it;
+    }
+    try {
+        retVal = worldTime - LastStaminaUsageMap.at ( iD );
+    }
+    catch ( std::exception e ) {
+        retVal = ULONG_MAX;
+    }
+    return retVal;
+}
+
 
 // wird aufgerufen von DoLogicalDamage
 gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs )
@@ -691,6 +719,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                 }
             }
             if ( !Damager.GetName ( ).Contains ( "Fist" ) ) {
+                DamagerOwner.NPC.SetCurrentAttacker ( Victim );
                 DamagerOwner.Routine.FullStop ( );
                 DamagerOwner.Routine.SetTask ( "ZS_HeavyParadeStumble" );
             }
@@ -931,6 +960,79 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     return gEAction_Stumble;
 }
 
+static mCFunctionHook Hook_AddStaminaPoints;
+GEInt AddStaminaPoints ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs ) {
+    INIT_SCRIPT_EXT ( Self , Other );
+    if ( a_iArgs < 0 ) {
+        LastStaminaUsageMap[Self.GetGameEntity ( )->GetID ( ).GetText ( )] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
+    }
+
+    /*if ( a_iArgs > 0 && getLastStaminaUsageTime ( Self.GetGameEntity ( )->GetID ( ).GetText ( ) ) < 20 )
+        return 0;*/
+    //std::cout << "Name: " << Self.GetName ( ) << ":\tLastUsage: " << getLastStaminaUsageTime ( Self.GetGameEntity ( )->GetID ( ).GetText ( ) ) << "\n";
+    return Hook_AddStaminaPoints.GetOriginalFunction ( &AddStaminaPoints )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
+}
+
+static mCFunctionHook Hook_StaminaUpdateOnTick;
+GEInt StaminaUpdateOnTick ( Entity p_entity ) {
+    std::cout << "Lengh of List: " << LastStaminaUsageMap.size ( ) << "\n";
+    const GEInt standardStaminaRecovery = staminaRecoveryPerTick;
+    GEInt retStaminaDelta = 0;
+
+    if ( p_entity.IsSprinting ( ) || ( p_entity.IsSwimming ( ) && *( BYTE* )RVA_Executable ( 0x27FD2 ) && p_entity == Entity::GetPlayer ( ) ) ) {
+        if ( p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Bloodfly ) {
+            return StaminaUpdateOnTickHelper (p_entity, -1 );
+        }
+
+        if ( eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing ) {
+            if ( p_entity.Inventory.IsSkillActive(Template("Perk_Sprinter") ))
+                return StaminaUpdateOnTickHelper ( p_entity , -4 );
+            return StaminaUpdateOnTickHelper ( p_entity , -8 );
+        }
+        if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Sprinter" ) ) )
+            return StaminaUpdateOnTickHelper ( p_entity , -5 );
+        return StaminaUpdateOnTickHelper ( p_entity , -10 );
+    }
+
+    if (p_entity.IsJumping() )
+        return StaminaUpdateOnTickHelper ( p_entity , 0 );
+
+    if (p_entity.NPC.IsDiseased( ) )
+        return StaminaUpdateOnTickHelper ( p_entity , 1 );
+
+    // HoldingBlockFlag 0x118ab0
+    if ( *(BYTE*)RVA_ScriptGame(0x118ab0) && eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing )
+        return StaminaUpdateOnTickHelper ( p_entity , 1 );
+    typedef GEU32(GetWeatherAdmin)( void );
+    // Get eCWeatherAdmin *! also available at RVA_ScriptGame(0x11a210)
+    GetWeatherAdmin* getWeatherAdminFunction = ( GetWeatherAdmin*)RVA_ScriptGame ( 0x12e0 );
+
+    GEU32 weatherAdmin = getWeatherAdminFunction ( );
+    // Or Temperatur
+    GEFloat weatherCondition = *( GEFloat* )( weatherAdmin + 0xd0 );
+
+    //Maybe Add more complex logic for Npcs aswell bro
+    if ( weatherCondition >= 40.0 ) {
+        if (p_entity.IsPlayer() && !p_entity.Inventory.IsSkillActive(Template("Perk_ResistHeat") ) )
+            return StaminaUpdateOnTickHelper ( p_entity , 2 );
+        return StaminaUpdateOnTickHelper ( p_entity , standardStaminaRecovery );
+    }
+
+    if ( weatherCondition <= -40.0 ) {
+        if ( p_entity.IsPlayer ( ) && !p_entity.Inventory.IsSkillActive ( Template ( "Perk_ResistCold" ) ) )
+            return StaminaUpdateOnTickHelper ( p_entity , 2 );
+        return StaminaUpdateOnTickHelper ( p_entity , standardStaminaRecovery );
+    }
+
+    return StaminaUpdateOnTickHelper ( p_entity , standardStaminaRecovery );
+}
+
+GEInt StaminaUpdateOnTickHelper (Entity& p_entity, GEInt p_staminaValue) {
+    if ( p_staminaValue > 0 && getLastStaminaUsageTime ( p_entity.GetGameEntity ( )->GetID ( ).GetText ( ) ) < staminaRecoveryDelay )
+        return 0;
+    return p_staminaValue;
+}
+
 static mCCallHook Hook_AssureProjectiles;
 void AssureProjectiles (GEInt registerBaseStack) {
     Entity* self = (Entity*) ( registerBaseStack - 0x2A0 );
@@ -1081,6 +1183,14 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
 
     static mCFunctionHook Hook_Assesshit;
     static mCFunctionHook Hook_IsEvil;
+    
+    if ( useNewStaminaRecovery ) {
+        Hook_AddStaminaPoints.Hook ( GetScriptAdminExt ( ).GetScript ( "AddStaminaPoints" )->m_funcScript , &AddStaminaPoints );
+
+        Hook_StaminaUpdateOnTick
+            .Prepare ( RVA_ScriptGame ( 0xb0520 ) , &StaminaUpdateOnTick , mCBaseHook::mEHookType_OnlyStack )
+            .Hook ( );
+    }
 
     Hook_GetAttituteSummons.Hook( GetScriptAdminExt ( ).GetScript ( "GetAttitude" )->m_funcScript , &GetAttitudeSummons );
 
