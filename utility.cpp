@@ -426,6 +426,8 @@ VulnerabilityStatus DamageTypeEntityTest ( Entity& p_victim , Entity& p_damager 
         case gESpecies_FireVaran:
         case gESpecies_FireGolem:
         case gESpecies_Dragon:
+            if ( p_victim.GetName ( ).Contains ( "Ice" ) )
+                return VulnerabilityStatus_WEAK;
             return VulnerabilityStatus_IMMUNE;
         case gESpecies_IceGolem:
         case gESpecies_Zombie:
@@ -445,11 +447,19 @@ VulnerabilityStatus DamageTypeEntityTest ( Entity& p_victim , Entity& p_damager 
             return VulnerabilityStatus_STRONG;
         case gESpecies_IceGolem:
             return VulnerabilityStatus_IMMUNE;
+        case gESpecies_Dragon:
+            if ( p_victim.GetName ( ).Contains ( "Fire" ) )
+                return VulnerabilityStatus_WEAK;
+            if ( p_victim.GetName ( ).Contains ( "Ice" ) )
+                return VulnerabilityStatus_IMMUNE;
+            return VulnerabilityStatus_REGULAR;
         default:
             return VulnerabilityStatus_REGULAR;
         }
     case gEDamageType_Lightning:
         if ( victimSpecies == gESpecies_Golem )
+            return VulnerabilityStatus_WEAK;
+        if (victimSpecies == gESpecies_Dragon && p_victim.GetName().Contains("Stone"))
             return VulnerabilityStatus_WEAK;
         return VulnerabilityStatus_REGULAR;
     default:
