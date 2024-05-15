@@ -273,6 +273,8 @@ GEInt GetSkillLevels ( Entity& p_entity ) {
     if ( p_entity != Entity::GetPlayer ( ) ) {
         GEU32 npcLevel = getPowerLevel(p_entity);
         //std::cout << "Entity: " << p_entity.GetName ( ) << "\tLevel: " << npcLevel << std::endl;
+        if ( npcLevel > 69 )
+            return 4;
         if ( npcLevel > 49 )
             return 3;
         if ( npcLevel > 34 )
@@ -324,6 +326,8 @@ GEInt GetSkillLevels ( Entity& p_entity ) {
     if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStrength" , &p_entity , &None , 0 ) >= 250 ) {
         level += 1;
     }
+    if ( p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) > 49 )
+        level += 1;
     //std::cout << "Returned PCHERO Level: " << level << "\n";
     return level; // or level
 }
@@ -342,8 +346,10 @@ GEInt GetActionWeaponLevel ( Entity& p_damager , gEAction p_action ) {
     case gEAction_SimpleWhirl:
     case gEAction_GetUpAttack:
     case gEAction_WhirlAttack:
-    case gEAction_PierceAttack:
         level = 2;
+        break;
+    case gEAction_PierceAttack:
+        level = 3;
         break;
     case gEAction_PowerAttack:
     case gEAction_SprintAttack:
