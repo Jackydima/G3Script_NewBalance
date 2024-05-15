@@ -975,7 +975,7 @@ GEInt AddStaminaPoints ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity 
 
 static mCFunctionHook Hook_StaminaUpdateOnTick;
 GEInt StaminaUpdateOnTick ( Entity p_entity ) {
-    std::cout << "Lengh of List: " << LastStaminaUsageMap.size ( ) << "\n";
+    //std::cout << "Lengh of List: " << LastStaminaUsageMap.size ( ) << "\n";
     const GEInt standardStaminaRecovery = staminaRecoveryPerTick;
     GEInt retStaminaDelta = 0;
 
