@@ -979,7 +979,7 @@ GEInt StaminaUpdateOnTick ( Entity p_entity ) {
     const GEInt standardStaminaRecovery = staminaRecoveryPerTick;
     GEInt retStaminaDelta = 0;
 
-    if ( p_entity.IsSprinting ( ) || ( p_entity.IsSwimming ( ) && *( BYTE* )RVA_Executable ( 0x27FD2 ) && p_entity == Entity::GetPlayer ( ) ) ) {
+    if ( p_entity.IsSprinting ( ) ||  p_entity == Entity::GetPlayer ( ) && ( p_entity.IsSwimming ( ) && *( BYTE* )RVA_Executable ( 0x27FD2 ) ) ) {
         if ( p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Bloodfly ) {
             return StaminaUpdateOnTickHelper (p_entity, -1 );
         }
@@ -1055,6 +1055,9 @@ static mCFunctionHook Hook_GetAttituteSummons;
 GEInt GetAttitudeSummons ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
     INIT_SCRIPT_EXT ( Self , Other );
     gCScriptAdmin& ScriptAdmin = GetScriptAdmin ( );
+
+    if ( Self.Party.GetPartyLeader() != None && Self.Party.GetPartyLeader ( ) == Other.Party.GetPartyLeader ( ) )
+        return 1;
 
     if ( Self.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned && Self.Party.GetPartyLeader() != Other && Self.Party.GetPartyLeader().NPC.GetCurrentTarget ( ) != Other ) {
         return ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Self.Party.GetPartyLeader () , &Other , a_iArgs );
