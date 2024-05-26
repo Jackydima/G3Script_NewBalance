@@ -473,9 +473,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
     if ( iProtection > 90 )
         iProtection = 90;
-    // If Impact Is the Damage Type, 10% of the Damage gets directly added, rest is protected by armor
+    // If Impact Is the Damage Type, 3% of the Damage gets directly added, rest is protected by armor
     if ( Damager.Damage.GetProperty<PSDamage::PropertyDamageType>() == gEDamageType_Impact )
-        FinalDamage2 = static_cast< GEInt >( (FinalDamage - FinalDamage * ( iProtection / 100.0f )) * 0.9f + FinalDamage * 0.1f);
+        FinalDamage2 = static_cast< GEInt >( (FinalDamage - FinalDamage * ( iProtection / 100.0f )) * 0.97f + FinalDamage * 0.03f);
     else 
         FinalDamage2 = static_cast< GEInt >( (FinalDamage - FinalDamage * ( iProtection / 100.0f ) ) );
 
@@ -521,7 +521,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     case gEAction_QuickAttack:
     case gEAction_QuickAttackR:
     case gEAction_QuickAttackL:
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 0.65f - FinalDamage * 0.15f );
+        //Quickattacken sind weniger effektiv gegen Starke NPC oder hohe Rüstung (5%)
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 0.55f - FinalDamage * 0.05f );
         break;
 
         // Angreifer benutzt Powerattacke
@@ -531,14 +532,16 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         if ( !CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , DamagerOwner )
             || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyStatePosition> ( ) == 2 )
         {
-            FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.7f + FinalDamage * 0.3f);
+            //Starke Attacken ignorieren 5 % Rüstung
+            FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.9f + FinalDamage * 0.1f);
         }
         break;
 
         // Angreifer benutzt Hack-Attacke
         //   => Schaden = Schaden * 2
     case gEAction_HackAttack:
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.5f + FinalDamage * 0.5f );
+        // Hackattacken ignorieren 7,5% Rüstung
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.85f + FinalDamage * 0.15f );
         break;
     }
     //std::cout << "Finaldamage2 after AttackType: " << FinalDamage2 << "\n";
@@ -558,8 +561,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
          5. Magie-Angriffe kann nur der Held abwehren. Voraussetzung: Er beherrscht "Magische Stäbe" und hält in seinen Händen einen Stab und einen Zauberspruch.
          6. Fernkampf-Angriffe kann man nur mit einem Schild abwehren.
     */
-    if ( FinalDamage2 < 0 )
-        FinalDamage2 = 0;
+    if ( FinalDamage2 < 5 )
+        FinalDamage2 = 5;
 
     if ( Victim == Player )
         Victim.Effect.StopEffect ( GETrue );
@@ -1162,8 +1165,6 @@ GEInt IsEvil ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* 
     //return 0;
 }
 
-
-
 extern "C" __declspec( dllexport )
 gSScriptInit const * GE_STDCALL ScriptInit( void )
 {
@@ -1204,9 +1205,9 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     Hook_AssureProjectiles
         .Prepare ( RVA_ScriptGame ( 0x192a2 ) , &AssureProjectiles , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Ebx )
         .InsertCall ( )
-        .AddRegArg(mCRegisterBase::mERegisterType_Ebp)
+        .AddRegArg ( mCRegisterBase::mERegisterType_Ebp )
         .ReplaceSize ( 0x1932b - 0x192a2 )
-        .RestoreRegister()
+        .RestoreRegister ( )
         .Hook ( );
 
     return &GetScriptInit();
