@@ -7,7 +7,6 @@
 #include "Script.h"
 #include "utility.h"
 
-
 // eSSetupEngine[1ea] = AB; eSSetupEngine[1eb] alternative AI
 static std::map<bCString , GEU32> PerfektBlockTimeStampMap = {};
 static std::map<bCString , GEU32> LastStaminaUsageMap = {};
@@ -16,6 +15,10 @@ static GEBool useNewStaminaRecovery = GETrue;
 static GEU32 staminaRecoveryDelay = 20;
 static GEU32 staminaRecoveryPerTick = 13;
 static GEFloat fMonsterDamageMultiplicator = 0.5;
+static GEFloat npcArmorMultiplier = 1.2;
+static GEFloat* npcArmorMultiplierPtr = &npcArmorMultiplier;
+static GEU32 startSTR = 100;
+static GEU32 startDEX = 100;
 
 gSScriptInit& GetScriptInit ( )
 {
@@ -40,6 +43,9 @@ void LoadSettings ( ) {
         useNewStaminaRecovery = config.GetBool ( "Script" , "UseNewStaminaRecovery" , useNewStaminaRecovery );
         staminaRecoveryDelay = config.GetU32 ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
         staminaRecoveryPerTick = config.GetU32 ( "Script" , "StaminaRecoveryPerTick" , staminaRecoveryPerTick );
+        npcArmorMultiplier = config.GetFloat ( "Script" , "NPCProtectionMultiplier" , npcArmorMultiplier );
+        startSTR = config.GetU32 ( "Script" , "StartSTR" , startSTR );
+        startDEX = config.GetU32( "Script" , "StartDEX" , startDEX );
     }
 }
 
@@ -299,8 +305,10 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
         else
         {
-            GEInt dexterity = ScriptAdmin.CallScriptFromScript ( "GetDexterity" , &DamagerOwner , &None , 0 );
-            GEInt strength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 );
+            // setze STR und DEX 100 als default wert an und rechne ohne Bonusschaden am Anfang
+            // dafür haben NPC, weniger Rüstung (1.2*NPCMAXLEVEL)
+            GEInt dexterity = ScriptAdmin.CallScriptFromScript ( "GetDexterity" , &DamagerOwner , &None , 0 )- startDEX;
+            GEInt strength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 )- startSTR;
             GEInt intelligence = ScriptAdmin.CallScriptFromScript ( "GetIntelligence" , &DamagerOwner , &None , 0 );
             // Ranged damage
             if ( IsNormalProjectile ( Damager ) == GETrue )
@@ -1107,6 +1115,16 @@ void PatchCode () {
     memcpy ( ( LPVOID )RVA_ScriptGame ( 0x6335f ) , patchcode, sizeof(patchcode)/sizeof(BYTE));
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x63365 - 0x63359 , currProt , &newProt );
 
+    /**
+    * Change the Protection Multiplier for NPCs to npcArmorMultiplier (1.2)
+    * 
+    */
+    //std::cout << "Adr adress: " << npcArmorMultiplierPtr << "\tFloat: " << npcArmorMultiplier << "\n";
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x34656 ) , 0x3465a - 0x34656 , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( ( LPVOID )RVA_ScriptGame ( 0x34656 ) , 0x90 , 0x3465a - 0x34656 );
+    memcpy ( ( LPVOID )RVA_ScriptGame ( 0x34656 ) , &npcArmorMultiplierPtr , sizeof ( &npcArmorMultiplierPtr ) );
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x34656 ) , 0x3465a - 0x34656 , currProt , &newProt );
+
     /** Remove HitProt when Entity is SitDowned
     * 0xb51c0 - 0xb51b1
     * Is gEAnimationState Knockdown? 
@@ -1165,6 +1183,14 @@ GEInt IsEvil ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* 
     //return 0;
 }
 
+static mCCallHook Hook_GiveXPPowerlevel;
+
+void GiveXPPowerlevel ( gCNPC_PS* p_npc ) {
+    Entity entity = p_npc->GetEntity ( );
+    GEInt powerLevel = getPowerLevel ( entity );
+    Hook_GiveXPPowerlevel.SetImmEax ( powerLevel );
+}
+
 extern "C" __declspec( dllexport )
 gSScriptInit const * GE_STDCALL ScriptInit( void )
 {
@@ -1195,6 +1221,14 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
             .Prepare ( RVA_ScriptGame ( 0xb0520 ) , &StaminaUpdateOnTick , mCBaseHook::mEHookType_OnlyStack )
             .Hook ( );
     }
+
+    Hook_GiveXPPowerlevel
+        .Prepare ( RVA_ScriptGame ( 0x4e451 ) , &GiveXPPowerlevel , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Eax )
+        .InsertCall ( )
+        .AddPtrStackArg( 0x11c )
+        .ReplaceSize ( 0x4e45a - 0x4e451 )
+        .RestoreRegister ( )
+        .Hook ( );
 
     Hook_GetAttituteSummons.Hook( GetScriptAdminExt ( ).GetScript ( "GetAttitude" )->m_funcScript , &GetAttitudeSummons );
 
