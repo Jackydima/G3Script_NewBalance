@@ -1,6 +1,10 @@
 #pragma once
 
 #include "Script.h"
+#include "FunctionHook.h"
+#include "CallHook.h"
+#include "CodePatch.h"
+#include "ge_DamageReceiver_ext.h"
 
 gSScriptInit & GetScriptInit();
 

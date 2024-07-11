@@ -70,26 +70,26 @@ Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
     }
 }
 
-GEInt getBigMonsterHyperArmorPoints ( Entity& p_monster , gEAction p_monsterAction ) {
+GEInt getMonsterHyperArmorPoints ( Entity& p_monster , gEAction p_monsterAction ) {
     if ( p_monsterAction != gEAction_PowerAttack && p_monsterAction != gEAction_SprintAttack )
         return 0;
     if ( !isBigMonster ( p_monster ) )
-        return 0;
+        return 2;
     switch ( p_monster.NPC.GetProperty<PSNpc::PropertySpecies> ( ) ) {
     case gESpecies_Demon:
     case gESpecies_Ogre:
-        return 2;
+        return 3;
     case gESpecies_Troll:
     case gESpecies_Trex:
     case gESpecies_Shadowbeast:
     case gESpecies_Dragon:
     case gESpecies_Gargoyle:
     case gESpecies_ScorpionKing:
-        return 4;
+        return 5;
     case gESpecies_FireGolem:
     case gESpecies_IceGolem:
     case gESpecies_Golem:
-        return 3;
+        return 4;
     default:
         return 0;
     }
@@ -480,7 +480,7 @@ GEInt GetHyperActionBonus ( gEAction p_action )
     switch ( p_action ) {
     case gEAction_Summon:
     case gEAction_FlameSword:
-        return 2;
+        return 4;
     case gEAction_PowerAttack:
     case gEAction_SprintAttack:
     case gEAction_HackAttack:
@@ -491,4 +491,75 @@ GEInt GetHyperActionBonus ( gEAction p_action )
         return 0;
     }
 
+}
+
+GEU32 GetPoisonDamage ( Entity& attacker ) {
+    GEInt poisonDamage = 3;
+    if ( attacker.IsPlayer ( ) ) {
+        GEInt thf = attacker.PlayerMemory.GetTheft ( );
+        poisonDamage = static_cast<GEInt>(thf * 0.1) + 3;
+        if ( poisonDamage < 3 )
+            poisonDamage = 3;
+        return poisonDamage;
+    }
+
+    GEInt level = getPowerLevel ( attacker );
+    poisonDamage = static_cast< GEInt >( level * 0.1 ) + 2;
+    return poisonDamage;
+}
+
+GEInt getWeaponLevel ( Entity& p_entity ) {
+    GEBool isPlayer = p_entity == Entity::GetPlayer ( );
+    if ( isPlayer ) {
+        if ( CheckHandUseTypes ( gEUseType_None , gEUseType_2H , p_entity ) || CheckHandUseTypes ( gEUseType_None , gEUseType_Axe , p_entity ) ||
+            CheckHandUseTypes ( gEUseType_None , gEUseType_Pickaxe , p_entity ) || CheckHandUseTypes ( gEUseType_None , gEUseType_Halberd , p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_3" ) ) )
+                return 3;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_2" ) ) )
+                return 2;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_1" ) ) )
+                return 1;
+        }
+        if ( CheckHandUseTypes ( gEUseType_None , gEUseType_1H , p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_3" ) ) )
+                return 3;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
+                return 2;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1" ) ) )
+                return 1;
+        }
+        if ( CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1H_2" ) ) )
+                return 3;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1H_1" ) ) )
+                return 2;
+        }
+        if ( CheckHandUseTypes ( gEUseType_None , gEUseType_Staff , p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_3" ) ) )
+                return 3;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_2" ) ) )
+                return 2;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_1" ) ) )
+                return 1;
+        }
+        return 0;
+    }
+    //NPC here
+    GEInt powerLevel = getPowerLevel ( p_entity );
+    if ( powerLevel > 49 )
+        return 3;
+    if ( powerLevel > 34 )
+        return 2;
+    if ( powerLevel > 20 )
+        return 1;
+    return 0;
+}
+
+GEBool IsHoldingTwoHandedWeapon ( Entity& entity ) {
+
+    gEUseType weaponUseType = entity.Inventory.GetItemFromSlot ( gESlot_RightHand ).Interaction.GetUseType ( );
+    if ( weaponUseType == gEUseType_2H || weaponUseType == gEUseType_Staff || weaponUseType == gEUseType_Axe || weaponUseType == gEUseType_Halberd || weaponUseType == gEUseType_Pickaxe ) {
+        return GETrue;
+    }
+    return GEFalse;
 }

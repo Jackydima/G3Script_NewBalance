@@ -15,8 +15,8 @@ static GEBool useNewStaminaRecovery = GETrue;
 static GEU32 staminaRecoveryDelay = 20;
 static GEU32 staminaRecoveryPerTick = 13;
 static GEFloat fMonsterDamageMultiplicator = 0.5;
-static GEFloat npcArmorMultiplier = 1.2;
-static GEFloat* npcArmorMultiplierPtr = &npcArmorMultiplier;
+static GEDouble npcArmorMultiplier = 1.2;
+static GEDouble* npcArmorMultiplierPtr = &npcArmorMultiplier;
 static GEU32 startSTR = 100;
 static GEU32 startDEX = 100;
 
@@ -43,7 +43,7 @@ void LoadSettings ( ) {
         useNewStaminaRecovery = config.GetBool ( "Script" , "UseNewStaminaRecovery" , useNewStaminaRecovery );
         staminaRecoveryDelay = config.GetU32 ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
         staminaRecoveryPerTick = config.GetU32 ( "Script" , "StaminaRecoveryPerTick" , staminaRecoveryPerTick );
-        npcArmorMultiplier = config.GetFloat ( "Script" , "NPCProtectionMultiplier" , npcArmorMultiplier );
+        npcArmorMultiplier = config.GetFloat( "Script" , "NPCProtectionMultiplier" , npcArmorMultiplier );
         startSTR = config.GetU32 ( "Script" , "StartSTR" , startSTR );
         startDEX = config.GetU32( "Script" , "StartDEX" , startDEX );
     }
@@ -234,7 +234,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         HitForce = static_cast< gEHitForce >( ActionWeaponLevel - GetShieldLevelBonus ( Victim ) );
         //std::cout << "Went in DamagerOwner Logic for getting Skills\tWeaponLevel: " << ActionWeaponLevel << "\tHitforce: "
            // << HitForce << "\tShieldLevel Bonus: " << GetShieldLevelBonus(Victim) << std::endl;
-        HitForce = static_cast< gEHitForce >(HitForce - getBigMonsterHyperArmorPoints(Victim, VictimAction));
+        HitForce = static_cast< gEHitForce >(HitForce - getMonsterHyperArmorPoints(Victim, VictimAction));
         //std::cout << "HitForce after Monster: " << HitForce << "\n";
 
         if ((GEInt)HitForce <= -2)
@@ -253,6 +253,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     if ( Damager.CollisionShape.GetType ( ) == eEPropertySetType_Animation )
     {
         bCString BoneName = Damager.CollisionShape.GetTouchingBone ( );
+        //std::cout << "BoneName: " << BoneName << "\n";
         if ( BoneName.Contains ( "_Head" , 0 ) ) // Kopfschuß
         {
             isHeadshot = GETrue;
@@ -356,7 +357,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         FinalDamage += ScriptAdmin.CallScriptFromScript ( "GetQualityBonus" , &Damager , &Victim , FinalDamage );
         //std::cout << "Finaldamage after Adding QualityBonus: " << FinalDamage << "\n";
         //std::cout << "GetPlayerSkillDamageBonus: " << ScriptAdmin.CallScriptFromScript ( "GetPlayerSkillDamageBonus" , &Damager , &Victim , FinalDamage ) << "\n";
-        FinalDamage += iAttributeBonusDamage + ScriptAdmin.CallScriptFromScript ( "GetPlayerSkillDamageBonus" , &Damager , &Victim , FinalDamage );
+        FinalDamage += iAttributeBonusDamage;
+        FinalDamage += ScriptAdmin.CallScriptFromScript ( "GetPlayerSkillDamageBonus" , &Damager , &Victim , FinalDamage );
         //std::cout << "Finaldamage after Adding Bonuses for PC_Hero: " << FinalDamage << "\tAttributBonus was: "<< iAttributeBonusDamage << "\n";
     }
     // Damager is transformed player or NPC
@@ -540,16 +542,16 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         if ( !CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , DamagerOwner )
             || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyStatePosition> ( ) == 2 )
         {
-            //Starke Attacken ignorieren 5 % Rüstung
-            FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.9f + FinalDamage * 0.1f);
+            //Starke Attacken ignorieren 7.5 % Rüstung
+            FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.85f + FinalDamage * 0.15f);
         }
         break;
 
         // Angreifer benutzt Hack-Attacke
         //   => Schaden = Schaden * 2
     case gEAction_HackAttack:
-        // Hackattacken ignorieren 7,5% Rüstung
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.85f + FinalDamage * 0.15f );
+        // Hackattacken ignorieren 10 % Rüstung
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.80f + FinalDamage * 0.20f );
         break;
     }
     //std::cout << "Finaldamage2 after AttackType: " << FinalDamage2 << "\n";
@@ -852,6 +854,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     {
         Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageAmount> ( ) = FinalDamage2;
         Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageType> ( ) = Damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
+        ResetHitPointsRegen ( Victim );
     }
 
     // Process StatusEffects and Animations:
@@ -900,11 +903,17 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     if ( ScriptAdmin.CallScriptFromScript ( "CanBePoisoned" , &Victim , &Damager , DamagerOwnerAction == gEAction_PierceAttack || DamagerOwnerAction == gEAction_HackAttack ) )
     {
         Victim.NPC.EnableStatusEffects ( gEStatusEffect_Poisoned , GETrue );
+        auto damageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( Victim.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ));
+        damageReceiver->AccessPoisonDamage ( ) = GetPoisonDamage(DamagerOwner);
     }
 
     if ( ScriptAdmin.CallScriptFromScript ( "CanBeDiseased" , &Victim , &Damager , 0 ) )
     {
-        Victim.NPC.EnableStatusEffects ( gEStatusEffect_Diseased , GETrue );
+        if ( Damager.GetName ( ).Contains ( "Fist" ) 
+            || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction>() == gEAction_HackAttack 
+            || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction_PierceAttack ) {
+            Victim.NPC.EnableStatusEffects ( gEStatusEffect_Diseased , GETrue );
+        }
     }
 
     if ( ScriptAdmin.CallScriptFromScript ( "CanFreeze" , &Victim , &Damager , FinalDamage2 ) )
@@ -989,6 +998,16 @@ GEInt StaminaUpdateOnTick ( Entity p_entity ) {
     //std::cout << "Lengh of List: " << LastStaminaUsageMap.size ( ) << "\n";
     const GEInt standardStaminaRecovery = staminaRecoveryPerTick;
     GEInt retStaminaDelta = 0;
+
+    if ( p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction::gEAction_Aim ) {
+        if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &p_entity , &None , 0 ) <= 7 ) {
+            p_entity.Routine.FullStop ( );
+            p_entity.Routine.SetState ( "PS_Normal" );
+            bCString aniname = p_entity.GetAni ( gEAction_AbortAttack , gEPhase::gEPhase_Begin );
+            p_entity.StartPlayAni( aniname,0,GETrue,0,GEFalse);
+        }
+        return StaminaUpdateOnTickHelper ( p_entity , -7 );
+    }
 
     if ( p_entity.IsSprinting ( ) ||  p_entity == Entity::GetPlayer ( ) && ( p_entity.IsSwimming ( ) && *( BYTE* )RVA_Executable ( 0x27FD2 ) ) ) {
         if ( p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Bloodfly ) {
@@ -1191,6 +1210,31 @@ void GiveXPPowerlevel ( gCNPC_PS* p_npc ) {
     Hook_GiveXPPowerlevel.SetImmEax ( powerLevel );
 }
 
+static mCFunctionHook Hook_Shoot;
+
+GEInt Shoot ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+    INIT_SCRIPT_EXT ( Self , Other );
+    if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &Self , &None , 0 ) <= 0 ) {
+        Self.Routine.FullStop ( );
+        Self.Routine.SetState ( "PS_Normal" );
+        //bCString aniname = p_entity.GetAni ( gEAction_AbortAttack , gEPhase::gEPhase_Begin );
+        //p_entity.StartPlayAni ( aniname , 0 , GETrue , 0 , GEFalse );
+        return 0;
+    }
+    return Hook_Shoot.GetOriginalFunction ( &Shoot )( a_pSPU , a_pSelfEntity, a_pOtherEntity, a_iArgs );
+}
+
+
+/*static mCCallHook Hook_NPCAnimationSpeed;
+void NPCAnimationSpeed ( Entity* p_entity, GEFloat * p_speedMult ) {
+    GEInt staminapoints = GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , p_entity , &None , 0 );
+    if ( staminapoints <= 20 )
+        *p_speedMult *= 0.75;
+    if ( staminapoints <= 50 )
+        *p_speedMult *= 0.875;
+}*/
+
+
 extern "C" __declspec( dllexport )
 gSScriptInit const * GE_STDCALL ScriptInit( void )
 {
@@ -1200,6 +1244,7 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     LoadSettings ( );
     ResetAllFix ( );
     PatchCode ( );
+    PatchCode1 ( );
  
     // If G3Fixes is installed use them
     GetScriptAdmin().LoadScriptDLL("Script_G3Fixes.dll");
@@ -1211,9 +1256,6 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
         Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript , &CanFreezeAddition , mCBaseHook::mEHookType_OnlyStack );
     }
 
-    static mCFunctionHook Hook_Assesshit;
-    static mCFunctionHook Hook_IsEvil;
-    
     if ( useNewStaminaRecovery ) {
         Hook_AddStaminaPoints.Hook ( GetScriptAdminExt ( ).GetScript ( "AddStaminaPoints" )->m_funcScript , &AddStaminaPoints );
 
@@ -1221,6 +1263,66 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
             .Prepare ( RVA_ScriptGame ( 0xb0520 ) , &StaminaUpdateOnTick , mCBaseHook::mEHookType_OnlyStack )
             .Hook ( );
     }
+
+    /*Hook_NPCAnimationSpeed
+        .Prepare ( RVA_ScriptGame ( 0x4d9a ) , &NPCAnimationSpeed , mCBaseHook::mEHookType_OnlyStack , mCRegisterBase::mERegisterType_Ebp )
+        .InsertCall ( )
+        .AddStackArgEbp ( 0x8 )
+        .AddPtrStackArg ( 0x0C )
+        .ReplaceSize( 0x4daa - 0x4d9a )
+        .RestoreRegister ( )
+        .Hook ( );*/
+
+    static mCFunctionHook Hook_Assesshit;
+    static mCFunctionHook Hook_IsEvil;
+    static mCFunctionHook Hook_GetAnimationSpeedModifier;
+    static mCFunctionHook Hook_OnPowerAim_Loop;
+    static mCFunctionHook Hook_CanParade;
+    static mCFunctionHook Hook_UpdateHitPointsOnTick;
+
+    HookFunctions ( );
+
+    Hook_UpdateHitPointsOnTick
+        .Prepare ( RVA_ScriptGame ( 0xb0360 ) , &UpdateHitPointsOnTick )
+        .Hook ( );
+
+    GetScriptAdmin ( ).LoadScriptDLL ( "Script_OptionalGuard.dll" );
+    if ( !GetScriptAdmin ( ).IsScriptDLLLoaded ( "Script_OptionalGuard.dll" ) ) {
+        Hook_CanParade
+            .Prepare ( RVA_ScriptGame ( 0xd480 ) , &CanParade , mCBaseHook::mEHookType_OnlyStack )
+            .Hook ( );
+    }
+
+    Hook_GetAnimationSpeedModifier
+        .Prepare ( RVA_ScriptGame ( 0x42a0 ) , &GetAnimationSpeedModifier )
+        .Hook ( );
+
+    Hook_OnPowerAim_Loop
+        .Prepare ( RVA_ScriptGame ( 0x84b90 ), &OnPowerAim_Loop )
+        .Hook ( );
+
+    Hook_CombatMoveScale
+        .Prepare ( RVA_Game ( 0x16b8a3 ) , &CombatMoveScale, mCBaseHook::mEHookType_Mixed, mCRegisterBase::mERegisterType_Ecx )
+        .InsertCall ( )
+        .AddPtrStackArgEbp ( 0x8 )
+        .AddPtrStackArgEbp ( 0xC )
+        .AddRegArg ( mCRegisterBase::mERegisterType_Ecx )
+        .RestoreRegister ( )
+        .Hook ( );
+
+    Hook_Shoot  
+        .Prepare ( RVA_ScriptGame ( 0x86450 ) , &Shoot )
+        .Hook ( );
+
+    Hook_Shoot_Velocity
+        .Prepare ( RVA_ScriptGame ( 0x8680a ) , &Shoot_Velocity )
+        .InsertCall ( )
+        .AddPtrStackArgEbp ( 0x8 )
+        .AddPtrStackArgEbp ( 0xC )
+        .AddPtrStackArgEbp ( 0x10 )
+        .AddStackArg(0xB8)
+        .RestoreRegister ( )
+        .Hook ( );
 
     Hook_GiveXPPowerlevel
         .Prepare ( RVA_ScriptGame ( 0x4e451 ) , &GiveXPPowerlevel , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Eax )

@@ -32,6 +32,13 @@
     </ClCompile>
     <ClCompile Include="Script_NewBalance.cpp" />
     <ClCompile Include="utility.cpp" />
+    <ClCompile Include="FunctionHook.cpp" />
+    <ClCompile Include="CallHook.cpp" />
+    <ClCompile Include="CodePatch.cpp" />
+    <ClCompile Include="ge_DamageReceiver_ext.cpp" />
+    <ClCompile Include="..\..\Shared\util\Module.cpp">
+      <Filter>util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Shared\gui\ge_hudstaticnpc.h">
@@ -57,6 +64,14 @@
     </ClInclude>
     <ClInclude Include="Script_NewBalance.h" />
     <ClInclude Include="utility.h" />
+    <ClInclude Include="FunctionHook.h" />
+    <ClInclude Include="CallHook.h" />
+    <ClInclude Include="CodePatch.h" />
+    <ClInclude Include="me_propertymacros.h" />
+    <ClInclude Include="ge_DamageReceiver_ext.h" />
+    <ClInclude Include="..\..\Shared\util\Module.h">
+      <Filter>util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Shared\util\Logging.inl">

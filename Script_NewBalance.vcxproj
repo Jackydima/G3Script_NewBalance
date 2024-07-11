@@ -63,7 +63,12 @@
     <ClCompile Include="..\..\Shared\util\Hook.cpp" />
     <ClCompile Include="..\..\Shared\util\Logging.cpp" />
     <ClCompile Include="..\..\Shared\util\Memory.cpp" />
+    <ClCompile Include="..\..\Shared\util\Module.cpp" />
     <ClCompile Include="..\..\Shared\util\Util.cpp" />
+    <ClCompile Include="CallHook.cpp" />
+    <ClCompile Include="CodePatch.cpp" />
+    <ClCompile Include="FunctionHook.cpp" />
+    <ClCompile Include="ge_DamageReceiver_ext.cpp" />
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="Script_NewBalance.cpp" />
   </ItemGroup>
@@ -74,7 +79,13 @@
     <ClInclude Include="..\..\Shared\util\Hook.h" />
     <ClInclude Include="..\..\Shared\util\Logging.h" />
     <ClInclude Include="..\..\Shared\util\Memory.h" />
+    <ClInclude Include="..\..\Shared\util\Module.h" />
     <ClInclude Include="..\..\Shared\util\Util.h" />
+    <ClInclude Include="CodePatch.h" />
+    <ClInclude Include="FunctionHook.h" />
+    <ClInclude Include="CallHook.h" />
+    <ClInclude Include="ge_DamageReceiver_ext.h" />
+    <ClInclude Include="me_propertymacros.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="Script_NewBalance.h" />
   </ItemGroup>
