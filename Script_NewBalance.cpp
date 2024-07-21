@@ -493,6 +493,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     if ( iProtection > 90 )
         iProtection = 90;
 
+    FinalDamage2 = static_cast< GEInt >( ( FinalDamage - FinalDamage * ( iProtection / 100.0f ) ) );
     /*
     * Default Protection!
     if ( Victim != Player || Player.NPC.IsTransformed ( )
