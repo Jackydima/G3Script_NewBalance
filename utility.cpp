@@ -2,7 +2,7 @@
 
 
 // SDK Function
-gEWeaponCategory GetHeldWeaponCategory ( Entity const& a_Entity )
+gEWeaponCategory GetHeldWeaponCategoryNB ( Entity const& a_Entity )
 {
     typedef gEWeaponCategory ( GE_STDCALL* mFGetHeldWeaponCategory )( Entity );
     static mFGetHeldWeaponCategory s_fGetHeldWeaponCategory = force_cast< mFGetHeldWeaponCategory >( RVA_ScriptGame ( 0x3240 ) );
@@ -239,27 +239,27 @@ GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entit
     return GEFalse;
 }
 
-GEBool IsNormalProjectile ( Entity& p_damager ) {
+GEBool IsNormalProjectileNB ( Entity& p_damager ) {
     //std::cout << "Projectilename: " << p_damager.GetName ( ) << std::endl;
     //std::cout << "Projectile?: " << p_damager.Projectile.IsValid() << std::endl;
     return p_damager.Projectile.IsValid ( ) &&
         p_damager.Interaction.GetSpell ( ) == None;
 }
 
-GEBool IsSpellContainer ( Entity& p_damager ) {
+GEBool IsSpellContainerNB ( Entity& p_damager ) {
     //std::cout << "Spell?: " << p_damager.Interaction.GetSpell ( ).GetName ( )
     //    << "\n" << p_damager.Interaction.GetOwner ( ).GetName() << std::endl;
     return p_damager.Interaction.GetSpell ( ) != None;
 }
 
-GEBool IsMagicProjectile ( Entity& p_damager ) {
+GEBool IsMagicProjectileNB ( Entity& p_damager ) {
     //std::cout << "Projectilename: " << p_damager.GetName ( ) << std::endl;
     //std::cout << "Projectile?: " << p_damager.Projectile.IsValid ( ) << std::endl;
     return p_damager.Projectile.IsValid ( ) &&
         p_damager.Interaction.GetSpell ( ) != None;
 }
 
-GEBool CheckHandUseTypes ( gEUseType p_lHand , gEUseType p_rHand , Entity& entity ) {
+GEBool CheckHandUseTypesNB ( gEUseType p_lHand , gEUseType p_rHand , Entity& entity ) {
     //std::cout << "Left: " << p_lHand << "Right: " << p_rHand
        // << "\nItem Left: " << entity.Inventory.GetItemFromSlot ( gESlot_LeftHand ).GetName ( )
        // << "\nItem Right" << entity.Inventory.GetItemFromSlot ( gESlot_RightHand ).GetName ( ) << std::endl;
@@ -269,7 +269,7 @@ GEBool CheckHandUseTypes ( gEUseType p_lHand , gEUseType p_rHand , Entity& entit
         .Interaction.GetUseType ( ) == p_rHand );
 }
 
-GEInt GetSkillLevels ( Entity& p_entity ) {
+GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     if ( p_entity != Entity::GetPlayer ( ) ) {
         GEU32 npcLevel = getPowerLevel(p_entity);
         //std::cout << "Entity: " << p_entity.GetName ( ) << "\tLevel: " << npcLevel << std::endl;
@@ -297,7 +297,7 @@ GEInt GetSkillLevels ( Entity& p_entity ) {
             level = 2;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
             level = 1;
-        if ( CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , p_entity )
+        if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , p_entity )
             && p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H1H_2" ) ) )
             level += 1;
         break;
@@ -332,7 +332,7 @@ GEInt GetSkillLevels ( Entity& p_entity ) {
     return level; // or level
 }
 
-GEInt GetActionWeaponLevel ( Entity& p_damager , gEAction p_action ) {
+GEInt GetActionWeaponLevelNB ( Entity& p_damager , gEAction p_action ) {
     GEInt level = 0;
     gEUseType damagerWeaponType = p_damager.Inventory.GetUseType ( p_damager.Inventory.FindStackIndex ( gESlot_RightHand ) );
     switch ( p_action ) {
@@ -353,7 +353,7 @@ GEInt GetActionWeaponLevel ( Entity& p_damager , gEAction p_action ) {
         break;
     case gEAction_PowerAttack:
     case gEAction_SprintAttack:
-        if ( CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , p_damager ) ) {
+        if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , p_damager ) ) {
             level = 3 - ( GEU32 )p_damager.Routine.GetProperty<PSRoutine::PropertyStatePosition> ( );
             break;
         }
@@ -368,15 +368,15 @@ GEInt GetActionWeaponLevel ( Entity& p_damager , gEAction p_action ) {
         level = 0;
         break;
     }
-    return level + GetSkillLevels ( p_damager );
+    return level + GetSkillLevelsNB ( p_damager );
 }
 
-GEInt GetShieldLevelBonus ( Entity& p_entity ) {
+GEInt GetShieldLevelBonusNB ( Entity& p_entity ) {
     //std::cout << "Name in GetShieldLevelBonus: " << p_entity.GetName ( ) << std::endl;
     if ( p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction::gEAction_GetUpParade ) {
         return 2;
     }
-    GEInt level = GetSkillLevels ( p_entity );
+    GEInt level = GetSkillLevelsNB ( p_entity );
     GEInt stackIndex = p_entity.Inventory.FindStackIndex ( gESlot::gESlot_LeftHand );
     gEUseType useType = p_entity.Inventory.GetUseType ( stackIndex );
 
@@ -392,7 +392,7 @@ GEInt GetShieldLevelBonus ( Entity& p_entity ) {
 }
 
 // return an Enum of vulnaribility
-VulnerabilityStatus DamageTypeEntityTest ( Entity& p_victim , Entity& p_damager ) {  // 0: Immunity, 1: Regular Damage, 2: Double Damage 3 Half Damage
+VulnerabilityStatus DamageTypeEntityTestNB ( Entity& p_victim , Entity& p_damager ) {  // 0: Immunity, 1: Regular Damage, 2: Double Damage 3 Half Damage
     if ( p_victim == None || p_damager == None )
         return VulnerabilityStatus::VulnerabilityStatus_IMMUNE;
     gEDamageType damageType = p_damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
@@ -428,13 +428,18 @@ VulnerabilityStatus DamageTypeEntityTest ( Entity& p_victim , Entity& p_damager 
             return VulnerabilityStatus_REGULAR;
         }
     case gEDamageType_Fire:
+        if ( p_victim.NPC.GetProperty<PSNpc::PropertyClass> ( ) == gEClass_Mage )
+            return VulnerabilityStatus_SLIGHTLYSTRONG;
         switch ( victimSpecies ) {
         case gESpecies_FireVaran:
         case gESpecies_FireGolem:
         case gESpecies_Dragon:
-            if ( p_victim.GetName ( ).Contains ( "Ice" ) )
+            if ( p_victim.GetName ( ).Contains ( "Ice" ) ) {
                 return VulnerabilityStatus_WEAK;
-            return VulnerabilityStatus_IMMUNE;
+            }
+            if ( IsSpellContainerNB ( p_damager ) )
+                return VulnerabilityStatus_IMMUNE;
+            return VulnerabilityStatus_STRONG;
         case gESpecies_IceGolem:
         case gESpecies_Zombie:
             return VulnerabilityStatus_WEAK;
@@ -444,25 +449,41 @@ VulnerabilityStatus DamageTypeEntityTest ( Entity& p_victim , Entity& p_damager 
             return VulnerabilityStatus_REGULAR;
         }
     case gEDamageType_Ice:
-        if ( p_victim.NPC.HasStatusEffects ( gEStatusEffect::gEStatusEffect_Frozen ) )
-            return VulnerabilityStatus_IMMUNE;
+        if ( p_victim.NPC.GetProperty<PSNpc::PropertyClass> ( ) == gEClass_Mage )
+            return VulnerabilityStatus_SLIGHTLYSTRONG;
+        if ( p_victim.NPC.HasStatusEffects ( gEStatusEffect::gEStatusEffect_Frozen ) ) {
+            if ( IsSpellContainerNB ( p_damager ) )
+                return VulnerabilityStatus_IMMUNE;
+            return VulnerabilityStatus_STRONG;
+        }
         switch ( victimSpecies ) {
         case gESpecies_FireGolem:
             return VulnerabilityStatus_WEAK;
         case gESpecies_Zombie:
             return VulnerabilityStatus_STRONG;
         case gESpecies_IceGolem:
-            return VulnerabilityStatus_IMMUNE;
-        case gESpecies_Dragon:
-            if ( p_victim.GetName ( ).Contains ( "Fire" ) )
-                return VulnerabilityStatus_WEAK;
-            if ( p_victim.GetName ( ).Contains ( "Ice" ) )
+            if (IsSpellContainerNB ( p_damager ) )
                 return VulnerabilityStatus_IMMUNE;
+            return VulnerabilityStatus_STRONG;
+        case gESpecies_Dragon:
+            if ( p_victim.GetName ( ).Contains ( "Fire" ) ) {
+                if ( IsSpellContainerNB ( p_damager ) )
+                    return VulnerabilityStatus_WEAK;
+                return VulnerabilityStatus_STRONG;
+            }
+            if ( p_victim.GetName ( ).Contains ( "Ice" ) ) {
+                if ( IsSpellContainerNB ( p_damager ) )
+                    return VulnerabilityStatus_IMMUNE;
+                return VulnerabilityStatus_STRONG;
+            }
             return VulnerabilityStatus_REGULAR;
+            
         default:
             return VulnerabilityStatus_REGULAR;
         }
     case gEDamageType_Lightning:
+        if ( p_victim.NPC.GetProperty<PSNpc::PropertyClass> ( ) == gEClass_Mage )
+            return VulnerabilityStatus_SLIGHTLYSTRONG;
         if ( victimSpecies == gESpecies_Golem )
             return VulnerabilityStatus_WEAK;
         if (victimSpecies == gESpecies_Dragon && p_victim.GetName().Contains("Stone"))
@@ -508,11 +529,11 @@ GEU32 GetPoisonDamage ( Entity& attacker ) {
     return poisonDamage;
 }
 
-GEInt getWeaponLevel ( Entity& p_entity ) {
+GEInt getWeaponLevelNB ( Entity& p_entity ) {
     GEBool isPlayer = p_entity == Entity::GetPlayer ( );
     if ( isPlayer ) {
-        if ( CheckHandUseTypes ( gEUseType_None , gEUseType_2H , p_entity ) || CheckHandUseTypes ( gEUseType_None , gEUseType_Axe , p_entity ) ||
-            CheckHandUseTypes ( gEUseType_None , gEUseType_Pickaxe , p_entity ) || CheckHandUseTypes ( gEUseType_None , gEUseType_Halberd , p_entity ) ) {
+        if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_2H , p_entity ) || CheckHandUseTypesNB ( gEUseType_None , gEUseType_Axe , p_entity ) ||
+            CheckHandUseTypesNB ( gEUseType_None , gEUseType_Pickaxe , p_entity ) || CheckHandUseTypesNB ( gEUseType_None , gEUseType_Halberd , p_entity ) ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_3" ) ) )
                 return 3;
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_2" ) ) )
@@ -520,7 +541,7 @@ GEInt getWeaponLevel ( Entity& p_entity ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_1" ) ) )
                 return 1;
         }
-        if ( CheckHandUseTypes ( gEUseType_None , gEUseType_1H , p_entity ) ) {
+        if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_1H , p_entity ) ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_3" ) ) )
                 return 3;
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
@@ -528,13 +549,13 @@ GEInt getWeaponLevel ( Entity& p_entity ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1" ) ) )
                 return 1;
         }
-        if ( CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , p_entity ) ) {
+        if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , p_entity ) ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1H_2" ) ) )
                 return 3;
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1H_1" ) ) )
                 return 2;
         }
-        if ( CheckHandUseTypes ( gEUseType_None , gEUseType_Staff , p_entity ) ) {
+        if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_Staff , p_entity ) ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_3" ) ) )
                 return 3;
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_2" ) ) )

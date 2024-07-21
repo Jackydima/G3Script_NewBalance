@@ -8,6 +8,16 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 	GEBool isArenaNPC = entity != Entity::GetPlayer ( ) && entity.NPC.GetProperty<PSNpc::PropertyAttackReason> ( ) == gEAttackReason_Arena;
 	GEFloat retVal = 1.0;
 	GEFloat multiPlier = 1.0;
+	
+	// New Perfect Block Vulnerability
+	auto damageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( entity.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
+	if ( damageReceiver->GetVulnerableState () == 1 && entity.Routine.GetCurrentTask ( ).Contains ( "Stumble" ) ) {
+		damageReceiver->AccessVulnerableState() = 2;
+		return 0.2;
+	}
+	else if ( damageReceiver->GetVulnerableState ( ) == 2 ) {
+		damageReceiver->AccessVulnerableState ( ) = 0;
+	}
 
 	if ( staminaPoints <= 20 ) {
 		if ( isArenaNPC )
@@ -66,21 +76,21 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 			return 1.3;
 		return 1;
 	case gEAction_Attack:
-		if ( CheckHandUseTypes ( gEUseType_None , gEUseType_1H , entity ) )
+		if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_1H , entity ) )
 			return 0.6 * multiPlier;
-		if ( CheckHandUseTypes ( gEUseType_Shield , gEUseType_1H , entity ) )
+		if ( CheckHandUseTypesNB ( gEUseType_Shield , gEUseType_1H , entity ) )
 			return 0.6 * multiPlier;
-		if ( CheckHandUseTypes ( gEUseType_Torch , gEUseType_1H , entity ) )
+		if ( CheckHandUseTypesNB ( gEUseType_Torch , gEUseType_1H , entity ) )
 			return 0.6 * multiPlier;
-		if ( CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , entity ) )
+		if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , entity ) )
 			return 0.6 * multiPlier;
-		if ( CheckHandUseTypes ( gEUseType_None , gEUseType_2H , entity ) )
+		if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_2H , entity ) )
 			return 0.7 * multiPlier;
-		if ( CheckHandUseTypes ( gEUseType_None , gEUseType_Axe , entity ) )
+		if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_Axe , entity ) )
 			return 0.7 * multiPlier;
-		if ( CheckHandUseTypes ( gEUseType_None , gEUseType_Staff , entity ) )
+		if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_Staff , entity ) )
 			return 0.7 * multiPlier;
-		if ( CheckHandUseTypes ( gEUseType_None , gEUseType_Halberd , entity ) )
+		if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_Halberd , entity ) )
 			return 0.7 * multiPlier;
 		return 1 * multiPlier;
 	case gEAction_PowerAttack:
@@ -89,7 +99,7 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 		if ( u32 == 0 ) {
 			return 1.5 * multiPlier;
 		}
-		if ( ( CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , entity ) ))
+		if ( ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , entity ) ))
 			return 0.9 * multiPlier;
 	case gEAction_QuickAttackR:
 	case gEAction_QuickAttackL:
@@ -110,7 +120,7 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 	case gEAction_ParadeStumbleL:
 		return 2.0 * multiPlier;
 	case gEAction_HeavyParadeStumble:
-		if ( CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , entity ) )
+		if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , entity ) )
 			return 0.7 * multiPlier;
 		return 1 * multiPlier;
 	case gEAction_QuickStumble:
@@ -174,6 +184,8 @@ GEInt OnPowerAim_Loop ( gCScriptProcessingUnit* p_PSU ) {
 		else if ( getPowerLevel ( Self ) >= 30 )
 			hitMultiplier *= animationSpeedBonusMid;
 	}
+	if ( hitMultiplier < 0.7 )
+		hitMultiplier /= 2;
 	if ( hitMultiplier > 1 )
 		hitMultiplier = 1;
 
@@ -274,16 +286,17 @@ GEInt UpdateHitPointsOnTick ( Entity p_entity ) {
 		GEInt maxHealth = p_entity.PlayerMemory.GetHitPointsMax ( );
 		retVal += static_cast< GEInt >( maxHealth * 0.01 );
 	}
-	else if (getPowerLevel(p_entity) >= 50) {
+	else if ( !p_entity.IsPlayer ( ) && getPowerLevel ( p_entity ) >= 50 ) {
 		GEInt maxHealth = p_entity.DamageReceiver.GetProperty<PSDamageReceiver::PropertyHitPointsMax> ( );
 		retVal += static_cast< GEInt >( maxHealth * 0.005 );
 	}
-
-	if (aiMode == gEAIMode_Combat )
-		retVal = static_cast< GEInt >( retVal * 0.5 );
 	
-	if ( retVal < 3 ) {
-		retVal = 3;
+	if ( retVal > 0 ) {
+		if ( aiMode == gEAIMode_Combat )
+			retVal = static_cast< GEInt >( retVal * 0.5 );
+		if ( retVal < 3 ) {
+			retVal = 3;
+		}
 	}
 
 	gEAniState aniState = p_entity.Routine.GetProperty<PSRoutine::PropertyAniState> ( );
@@ -334,14 +347,14 @@ GEInt GE_STDCALL CanParade ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEnt
 		}
 	}
 	// Special return for Blocking Monsterdamage with a 2H Weapon, Axe, Halbert, Staff and 1H When skilled up
-	GEInt weaponLevel = getWeaponLevel ( Victim );
+	GEInt weaponLevel = getWeaponLevelNB ( Victim );
 	if ( isBigMonster ( DamagerOwner ) ) {
 		weaponLevel -= 1;
 	}
 	if ( victimInParade && victimAction != gEAction_HackAttack && victimAction != gEAction_PierceAttack
 		&& victimAction != gEAction_WhirlAttack && victimAction != gEAction_FinishingAttack
 		&& isMonsterDamager && (weaponLevel >= 2 || (!isBigMonster(DamagerOwner) && !Damager.GetName().Contains("Fist")) )
-		&& ( damagerAction != gEAction_PierceAttack || CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , Victim ) )
+		&& ( damagerAction != gEAction_PierceAttack || CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , Victim ) )
 		&& ( damagerAction != gEAction_HackAttack || victimHolding2HWeap ) ) {
 		if ( Victim.IsInFOV ( DamagerOwner ) ) {
 			return 1;
@@ -349,7 +362,7 @@ GEInt GE_STDCALL CanParade ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEnt
 	}
 
 	// 1H1H can block Pierceattacks
-	if ( CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , Victim ) && victimInParade
+	if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , Victim ) && victimInParade
 		 && victimAction != gEAction_PierceAttack && victimAction != gEAction_FinishingAttack
 		&& damagerAction == gEAction_PierceAttack ) {
 		if ( Victim.IsInFOV ( DamagerOwner ) ) {
@@ -404,3 +417,37 @@ void HookFunctions ( ) {
 		.Prepare ( RVA_ScriptGame ( 0xb0ef0 ), &OnTick )
 		.Hook ( );
 }
+
+/*ME_DEFINE_AND_REGISTER_SCRIPT ( MagicSummonWolfPack )
+{
+	UNREFERENCED_PARAMETER ( a_iArgs );
+	INIT_SCRIPT_EXT ( SelfEntity , Target );
+
+	bCMatrix Pos = Target.GetPose ( );
+
+	auto Spell = Target.Interaction.GetSpell ( );
+
+	for ( GEInt x = 0; x < 5; x++ )
+	{
+		auto Spawned = Entity::Spawn ( Template ( "IceWolf" ) , Pos );
+		bCMatrix NewPos;
+		if ( Spawned.FindSpawnPose ( NewPos , Target , true , x + 1 ) )
+		{
+			Spawned.MoveTo ( NewPos );
+			Spawned.Effect.StartEffect ( Spell.Magic.EffectTargetCast , GEFalse );
+			Target.Party.Add ( Spawned );
+			Spawned.Party.Waiting = GEFalse;
+			Spawned.Party.PartyMemberType = gEPartyMemberType::gEPartyMemberType_Summoned;
+			Spawned.Routine.FullStop ( );
+			Spawned.Routine.SetTask ( "ZS_FollowPlayer" );
+			Spawned.Dialog.PartyEnabled = GETrue;
+		}
+		else
+		{
+			Spawned.Kill ( );
+			Spawned.Decay ( );
+		}
+	}
+
+	return 0;
+}*/

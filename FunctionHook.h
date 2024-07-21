@@ -1,6 +1,7 @@
 #pragma once
 #include "Script.h"
 #include "utility.h"
+//#include "util/ScriptUtil.h"
 #include "ge_DamageReceiver_ext.h"
 
 static const GEFloat animationSpeedBonusMid = 1.3;

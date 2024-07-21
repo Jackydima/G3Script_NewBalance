@@ -106,6 +106,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
     gEAction DamagerOwnerAction = DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( );
     gEAction VictimAction = Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( );
+    auto damagerOwnerDamageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( DamagerOwner.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
+    auto victimDamageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( Victim.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
 
     /**
     * Workaround: Changed in the FixResetAll() the Trigger of Weapons when functions like all Stumble + PipiStumble get called it would still register Weaponhits 
@@ -219,19 +221,19 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // - HitForce = max(GetActionWeaponLevel(DamagerOwner) - GetShieldLevelBonus(Victim), 1)
 
     gEHitForce HitForce = gEHitForce_Minimal;
-    if ( IsSpellContainer ( Damager ) )
+    if ( IsSpellContainerNB ( Damager ) )
     {
         HitForce = gEHitForce_Heavy;
     }
-    else if ( IsNormalProjectile ( Damager ) )
+    else if ( IsNormalProjectileNB ( Damager ) )
     {
         // Bow tension, for crossbows always 1.0
         HitForce = Damager.Damage.GetProperty<PSDamage::PropertyDamageHitMultiplier> ( ) >= 0.6f ? gEHitForce_Heavy : gEHitForce_Minimal;
     }
     else if ( DamagerOwner != None )
     {
-        GEInt ActionWeaponLevel = GetActionWeaponLevel ( DamagerOwner , DamagerOwnerAction );
-        HitForce = static_cast< gEHitForce >( ActionWeaponLevel - GetShieldLevelBonus ( Victim ) );
+        GEInt ActionWeaponLevel = GetActionWeaponLevelNB ( DamagerOwner , DamagerOwnerAction );
+        HitForce = static_cast< gEHitForce >( ActionWeaponLevel - GetShieldLevelBonusNB ( Victim ) );
         //std::cout << "Went in DamagerOwner Logic for getting Skills\tWeaponLevel: " << ActionWeaponLevel << "\tHitforce: "
            // << HitForce << "\tShieldLevel Bonus: " << GetShieldLevelBonus(Victim) << std::endl;
         HitForce = static_cast< gEHitForce >(HitForce - getMonsterHyperArmorPoints(Victim, VictimAction));
@@ -282,10 +284,10 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         GEInt iAttributeBonusDamage;
 
         // Magic damage
-        if ( IsSpellContainer ( Damager ) )
+        if ( IsSpellContainerNB ( Damager ) )
         {
             // Magic projectiles do double damage, !but are capped to 200.
-            if ( IsMagicProjectile ( Damager ) )
+            if ( IsMagicProjectileNB ( Damager ) )
             {
                 FinalDamage *= 2;
 
@@ -312,7 +314,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             GEInt strength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 )- startSTR;
             GEInt intelligence = ScriptAdmin.CallScriptFromScript ( "GetIntelligence" , &DamagerOwner , &None , 0 );
             // Ranged damage
-            if ( IsNormalProjectile ( Damager ) == GETrue )
+            if ( IsNormalProjectileNB ( Damager ) == GETrue )
             {
                 iAttributeBonusDamage = dexterity / 2;
             }
@@ -387,7 +389,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             }
             else
             {
-                if ( IsNormalProjectile ( Damager ) || IsMagicProjectile ( Damager ) || IsSpellContainer ( Damager ) ) {
+                if ( IsNormalProjectileNB ( Damager ) || IsMagicProjectileNB ( Damager ) || IsSpellContainerNB ( Damager ) ) {
                     FinalDamage = static_cast< GEInt >( iStrength * 0.9f + FinalDamage / 7.0f );
                     //std::cout << "Finaldamage after Spell/Projectile: " << FinalDamage << "\n";
                 }
@@ -438,7 +440,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
 
         // Magic spells, casted by NPCs, do double damage
-        if ( IsMagicProjectile ( Damager ) || IsSpellContainer ( Damager ) )
+        if ( IsMagicProjectileNB ( Damager ) || IsSpellContainerNB ( Damager ) )
         {
             FinalDamage *= 2;
             //std::cout << "Finaldamage after Magicspells for NPCs: " << FinalDamage << "\n";
@@ -450,17 +452,24 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     {
         FinalDamage *= 2;
     }*/
-    switch ( DamageTypeEntityTest ( Victim , Damager ) ) {
+    switch ( DamageTypeEntityTestNB ( Victim , Damager ) ) {
     case VulnerabilityStatus_WEAK:
-        FinalDamage *= 2;
+        FinalDamage *= 1.6;
         break;
     case VulnerabilityStatus_STRONG:
         FinalDamage /= 2;
+        break;
+    case VulnerabilityStatus_SLIGHTLYWEAK:
+        FinalDamage *= 1.2;
+        break;
+    case VulnerabilityStatus_SLIGHTLYSTRONG:
+        FinalDamage *= 0.8;
+        break;
     }
     //std::cout << "Finaldamage after Vulnerabilities: " << FinalDamage << "\n";
 
     // Handelt es sich um einen Powercast? (Player and NPCs)
-    if ( Damager.Projectile.IsValid ( ) && IsSpellContainer ( Damager ) )
+    if ( Damager.Projectile.IsValid ( ) && IsSpellContainerNB ( Damager ) )
     {
         // Powercast
         if ( Damager.Projectile.GetProperty<PSProjectile::PropertyPathStyle> ( ) == gEProjectilePath_Missile )
@@ -483,11 +492,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
     if ( iProtection > 90 )
         iProtection = 90;
-    // If Impact Is the Damage Type, 3% of the Damage gets directly added, rest is protected by armor
-    if ( Damager.Damage.GetProperty<PSDamage::PropertyDamageType>() == gEDamageType_Impact )
-        FinalDamage2 = static_cast< GEInt >( (FinalDamage - FinalDamage * ( iProtection / 100.0f )) * 0.97f + FinalDamage * 0.03f);
-    else 
-        FinalDamage2 = static_cast< GEInt >( (FinalDamage - FinalDamage * ( iProtection / 100.0f ) ) );
 
     /*
     * Default Protection!
@@ -521,7 +525,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Schritt 3: Angriffsart
     //
     //std::cout << "Action: " << DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) << std::endl;
-    if ( DamageTypeEntityTest ( Victim , Damager ) == VulnerabilityStatus_IMMUNE && FinalDamage2 > 5) 
+    if ( DamageTypeEntityTestNB ( Victim , Damager ) == VulnerabilityStatus_IMMUNE && FinalDamage2 > 5)
         FinalDamage2 = 5;
 
     switch ( DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) )
@@ -539,7 +543,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         //   => Schaden = Schaden * 2 (bei Kampf mit 2 Waffen nicht durchgehend!)
     case gEAction_PowerAttack:
     case gEAction_SprintAttack:
-        if ( !CheckHandUseTypes ( gEUseType_1H , gEUseType_1H , DamagerOwner )
+        if ( !CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , DamagerOwner )
             || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyStatePosition> ( ) == 2 )
         {
             //Starke Attacken ignorieren 7.5 % Rüstung
@@ -553,6 +557,10 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         // Hackattacken ignorieren 10 % Rüstung
         FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.80f + FinalDamage * 0.20f );
         break;
+    }
+    if ( victimDamageReceiver->GetVulnerableState ( ) == 2 ) {
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 2 );
+        victimDamageReceiver->AccessVulnerableState ( ) = 0;
     }
     //std::cout << "Finaldamage2 after AttackType: " << FinalDamage2 << "\n";
 
@@ -578,7 +586,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         Victim.Effect.StopEffect ( GETrue );
 
     // Parade Magic
-    if ( Damager.Projectile.IsValid ( ) && IsSpellContainer ( Damager ) )
+    if ( Damager.Projectile.IsValid ( ) && IsSpellContainerNB ( Damager ) )
     {
         if ( ScriptAdmin.CallScriptFromScript ( "CanParadeMagic" , &Victim , &Damager , 0 ) )
         {
@@ -611,7 +619,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
     }
     // Parade Missile
-    else if ( IsNormalProjectile ( Damager ) )
+    else if ( IsNormalProjectileNB ( Damager ) )
     {
         if ( ScriptAdmin.CallScriptFromScript ( "CanParadeMissile" , &Victim , &Damager , 0 ) )
         {
@@ -638,10 +646,10 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
     }
     // Can parade meele?
-    else if ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 ) 
-        || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && GetHeldWeaponCategory(Victim) == gEWeaponCategory_Melee
-            && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectile ( Damager ) && !IsSpellContainer ( Damager ) )
-        || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade && Victim.Routine.GetStateTime ( ) < 0.05 ))
+    else if ( !Victim.NPC.IsFrozen ( ) && ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 )
+        || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && GetHeldWeaponCategoryNB (Victim) == gEWeaponCategory_Melee
+            && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectileNB ( Damager ) && !IsSpellContainerNB ( Damager ) )
+        || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade && Victim.Routine.GetStateTime ( ) < 0.05 ) ))
     {
         /*
             TODO: Get here the check for lastHit and ignore last
@@ -649,13 +657,13 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         GEU32 lastHit = getPerfectBlockLastTime ( Victim.GetGameEntity ( )->GetID ( ).GetText ( ) );
         PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
         // Changed to Damage Numbers after Defenses
-        GEInt FinalDamage3 = FinalDamage2 / -2;
+        GEInt FinalDamage3 = FinalDamage / -2;
         // Reduce damage if parading melee with shield
-        if ( CheckHandUseTypes ( gEUseType_Shield , gEUseType_1H , Victim ) )
+        if ( CheckHandUseTypesNB ( gEUseType_Shield , gEUseType_1H , Victim ) )
         {
             if ( Victim != Player || !Victim.Inventory.IsSkillActive ( "Perk_Shield_2" ) )
             {
-                // Weicht von "Detaillierte Schadenberechnung" ab, dort wird ein faktor von 2/3 anstatt 0.5 beschrieben.
+                // Weicht von "Detaillierte Schadenberechnung" ab, dort wird ein Faktor von 2/3 anstatt 0.5 beschrieben.
                 FinalDamage3 /= 2;
             }
             else
@@ -714,7 +722,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
         //std::cout << "StateTime: " << Victim.Routine.GetStateTime ( ) << "\t AniState: " << Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() <<"\n";
         //std::cout << "LastHit: " << lastHit << "\tVictimID: " << Victim.GetGameEntity()->GetID().GetText() << "\tName: " << Victim.GetName() << "\tSize Map: " << PerfektBlockTimeStampMap.size() << "\n";
-        if ( lastHit > 7 && (Victim.Routine.GetStateTime ( ) < 0.05 
+        if ( lastHit > 12 && (Victim.Routine.GetStateTime ( ) < 0.05 
             || (DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction!=gEAction_HackAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1) ) 
             && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade ) {
             PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = 0;
@@ -738,7 +746,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             }
             else {
                 DamagerOwner.Routine.SetTask ( "ZS_Stumble" );
-            }
+            } 
+            damagerOwnerDamageReceiver->AccessVulnerableState ( ) = 1;
             return VictimAction;
         }
 
@@ -747,7 +756,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             iStaminaRemaining = 0;
         ScriptAdmin.CallScriptFromScript ( "AddStaminaPoints" , &Victim , &None , FinalDamage3 );
         //Changed back the remaining raw Damage after Def. Reductuion and Stamina consumption
-        ScriptAdmin.CallScriptFromScript ( "AddHitPoints" , &Victim , &None , iStaminaRemaining*2 );
+        GEInt healthDamage = iStaminaRemaining * 2 * FinalDamage2 / FinalDamage;
+        ScriptAdmin.CallScriptFromScript ( "AddHitPoints" , &Victim , &None , healthDamage );
 
         // Wenn der bei der Parade erhaltene Schaden das Opfer nicht unter 0 HP bringt
         if ( ScriptAdmin.CallScriptFromScript ( "GetHitPoints" , &Victim , &None , 0 ) > 0 )
@@ -802,13 +812,13 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
         // Wenn der Held bei Schwierigkeitsgrad "hoch" eine Fernkampfwaffe benutzt
         //  => Schaden = Schaden * 1,2
-        if ( Victim != Player && IsNormalProjectile ( Damager ) && Entity::GetCurrentDifficulty ( ) == EDifficulty_Hard )
+        if ( Victim != Player && IsNormalProjectileNB ( Damager ) && Entity::GetCurrentDifficulty ( ) == EDifficulty_Hard )
         {
             FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.2f );
         }
     }
 
-    if ( IsNormalProjectile ( Damager ) && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 ) )
+    if ( IsNormalProjectileNB ( Damager ) && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 ) )
     {
         // Projectile is a Headbutt
         if ( Damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( ) == gEDamageType_Impact )
@@ -930,7 +940,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
 
     //Stun Protection
-    if ( DamageTypeEntityTest ( Victim , Damager ) == VulnerabilityStatus_IMMUNE )
+    if ( DamageTypeEntityTestNB ( Victim , Damager ) == VulnerabilityStatus_IMMUNE )
         return gEAction_None;
 
     if ( VictimAction == gEAction_SitKnockDown ) {

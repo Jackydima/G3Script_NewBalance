@@ -27,9 +27,6 @@
     <ClCompile Include="..\..\Shared\util\Memory.cpp">
       <Filter>util</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Shared\util\Util.cpp">
-      <Filter>util</Filter>
-    </ClCompile>
     <ClCompile Include="Script_NewBalance.cpp" />
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="FunctionHook.cpp" />
@@ -37,6 +34,9 @@
     <ClCompile Include="CodePatch.cpp" />
     <ClCompile Include="ge_DamageReceiver_ext.cpp" />
     <ClCompile Include="..\..\Shared\util\Module.cpp">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Shared\util\Util.cpp">
       <Filter>util</Filter>
     </ClCompile>
   </ItemGroup>
@@ -59,9 +59,6 @@
     <ClInclude Include="..\..\Shared\util\Memory.h">
       <Filter>util</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Shared\util\Util.h">
-      <Filter>util</Filter>
-    </ClInclude>
     <ClInclude Include="Script_NewBalance.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="FunctionHook.h" />
@@ -70,6 +67,9 @@
     <ClInclude Include="me_propertymacros.h" />
     <ClInclude Include="ge_DamageReceiver_ext.h" />
     <ClInclude Include="..\..\Shared\util\Module.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Shared\util\Util.h">
       <Filter>util</Filter>
     </ClInclude>
   </ItemGroup>
