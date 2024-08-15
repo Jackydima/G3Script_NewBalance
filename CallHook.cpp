@@ -34,12 +34,23 @@ void Shoot_Velocity ( gCScriptProcessingUnit* p_PSU , Entity* p_self , Entity* p
 	if ( !gotBoneMatrix )
 		return;
 
-	bCVector targetVec = targetBoneMatrix.AccessTranslation ( );
-	// AI-Randomness
-	targetVec.AccessX ( ) += ( Entity::GetRandomNumber ( 150 ) - 75 );
+	bCVector targetVecPos = targetBoneMatrix.AccessTranslation ( );
+	// AI-Randomness#
+	bCVector targetVec = targetVecPos - projectileItem.GetPosition ( );
+	
+	// Absolute Randomness of shots
+	targetVecPos.AccessX ( ) += ( Entity::GetRandomNumber ( 200*NPC_AIM_INACCURACY ) - 100* NPC_AIM_INACCURACY );
 	//targetVec.AccessY ( ) += ( Entity::GetRandomNumber ( 50 ) - 25 );
-	targetVec.AccessZ ( ) += ( Entity::GetRandomNumber ( 150 ) - 75 );
-	bCVector newTargetDirectionVec = ( targetVec + ( p_target->GetGameEntity ( )->GetLinearVelocity ( ) * time ) ) - projectileItem.GetPosition ( );
+	targetVecPos.AccessZ ( ) += ( Entity::GetRandomNumber ( 200*NPC_AIM_INACCURACY ) - 100 * NPC_AIM_INACCURACY );
+
+	bCVector newTargetDirectionVec = ( targetVecPos + ( p_target->GetGameEntity ( )->GetLinearVelocity ( ) * time ) ) - projectileItem.GetPosition ( );
+
+	// Speed relative Randomness of shots
+	GEFloat xDiff = newTargetDirectionVec.GetX ( ) - targetVec.GetX();
+	GEFloat zDiff = newTargetDirectionVec.GetZ ( ) - targetVec.GetZ ( );
+	newTargetDirectionVec.AccessX ( ) += ( Entity::GetRandomNumber ( static_cast< GEInt >( xDiff * NPC_AIM_INACCURACY * 2 ) ) - xDiff * NPC_AIM_INACCURACY );
+	newTargetDirectionVec.AccessZ ( ) += ( Entity::GetRandomNumber ( static_cast< GEInt >( zDiff * NPC_AIM_INACCURACY * 2 ) ) - zDiff * NPC_AIM_INACCURACY );
+
 	p_projectile->AccessProperty < PSProjectile::PropertyPathStyle> ( ) = gEProjectilePath::gEProjectilePath_Line;
 	p_projectile->SetTarget ( None );
 	p_projectile->AccessProperty<PSProjectile::PropertyTargetDirection> ( ) = newTargetDirectionVec.GetNormalized();
