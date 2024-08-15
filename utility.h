@@ -35,5 +35,10 @@ GEInt GetHyperActionBonus ( gEAction p_action );
 GEU32 GetPoisonDamage ( Entity& attacker );
 GEInt getWeaponLevelNB ( Entity& p_entity );
 GEBool IsHoldingTwoHandedWeapon ( Entity& entity );
+GEBool IsInSameParty ( Entity& p_self , Entity& p_other );
+GEBool IsPlayerInCombat ( );
 
+GEBool IsInRecovery ( Entity& p_entity );
 
+GEInt speciesLeftHand ( Entity p_entity );
+GEInt speciesRightHand ( Entity p_entity );

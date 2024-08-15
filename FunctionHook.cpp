@@ -192,7 +192,7 @@ GEInt OnPowerAim_Loop ( gCScriptProcessingUnit* p_PSU ) {
 	item.Damage.AccessProperty<PSDamage::PropertyDamageHitMultiplier> ( ) = hitMultiplier;
 
 	GEInt* flagForPuttingWeaponBack = (GEInt*)(RVA_ScriptGame ( 0x118d58 ));
-	/*
+	
 	if ( *flagForPuttingWeaponBack ) {
 		gEAction action = (gEAction)**( gEAction** )( RVA_ScriptGame ( 0x118d54 ) );
 		typedef void (*Func1)( Entity );
@@ -203,16 +203,17 @@ GEInt OnPowerAim_Loop ( gCScriptProcessingUnit* p_PSU ) {
 			func1 ( Self );
 			func2 ( -1 , -1 , Self );
 			Self.Routine.FullStop ( );
+			Self.Routine.SetTask ( "PS_Ranged_Reload" );
 			Self.Routine.SetState ( "PS_Ranged_Reload" );
 			return 1;
 		}
-
+		
 		if ( action == gEAction_Shoot ) {
 			func1 ( Self );
-			//Self.Routine.FullStop ( );
-			//Self.Routine.SetState ( "PS_Ranged_Shoot" );
+			Self.Routine.FullStop ( );
+			Self.Routine.SetState ( "PS_Ranged_Shoot" );
 		}
-	}*/
+	}
 	return 1;
 }
 
@@ -273,7 +274,10 @@ GEInt UpdateHitPointsOnTick ( Entity p_entity ) {
 
 	if ( p_entity.NPC.IsPoisoned ( ) ) {
 		gCDamageReceiver_PS_Ext* damageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( p_entity.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
-		retVal -= damageReceiver->GetPoisonDamage ( );
+		GEU32 poisonDamage = damageReceiver->GetPoisonDamage ( );
+		if ( poisonDamage <= 0 )
+			poisonDamage = 5;
+		retVal -= poisonDamage;
 	}
 
 	if ( p_entity.NPC.IsInMagicBarrier ( ) )
@@ -288,7 +292,7 @@ GEInt UpdateHitPointsOnTick ( Entity p_entity ) {
 	}
 	else if ( !p_entity.IsPlayer ( ) && getPowerLevel ( p_entity ) >= 50 ) {
 		GEInt maxHealth = p_entity.DamageReceiver.GetProperty<PSDamageReceiver::PropertyHitPointsMax> ( );
-		retVal += static_cast< GEInt >( maxHealth * 0.005 );
+		retVal += static_cast< GEInt >( maxHealth * 0.01 );
 	}
 	
 	if ( retVal > 0 ) {
@@ -399,14 +403,183 @@ GEInt GE_STDCALL CanParade ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEnt
 static mCFunctionHook Hook_OnTick;
 GEInt GE_STDCALL OnTick ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs ) {
 	INIT_SCRIPT_EXT ( Self , Other );
-	if ( !Self.IsPlayer ( ) && Self.NPC.GetProperty<PSNpc::PropertyCombatState> ( ) == 1 ) {
+	if ( !Self.IsPlayer ( ) && /*Self.NPC.GetProperty<PSNpc::PropertySpecies> ( ) != gESpecies::gESpecies_Zombie
+		&&*/ Self.Routine.GetProperty<PSRoutine::PropertyAIMode> ( ) == gEAIMode_Combat ) {
 		GEFloat staminaPercantage = Self.DamageReceiver.GetProperty<PSDamageReceiver::PropertyStaminaPoints> ( ) / Self.DamageReceiver.GetProperty<PSDamageReceiver::PropertyStaminaPointsMax> ( );
-		if ( Self.GetDistanceTo ( Self.NPC.GetCurrentTarget ( ) ) > 450.0 /* && staminaPercantage >= 0.2*/ )
+		if (  Self.GetDistanceTo ( Self.NPC.GetCurrentTarget ( ) ) > 450.0 /* && staminaPercantage >= 0.2*/ )
 			Self.SetMovementMode ( gECharMovementMode_Sprint );
 		else
 			Self.SetMovementMode ( gECharMovementMode_Run );
 	}
+
+	if ( Self == Entity::GetPlayer ( ) && IsPlayerInCombat ( ) ) {
+		Self.NPC.AccessProperty<PSNpc::PropertyCombatState> ( ) = 1;
+		//std::cout << "IsInCombat Suka\n";
+	}
+	else if ( Self == Entity::GetPlayer ( ) ) {
+		Self.NPC.AccessProperty<PSNpc::PropertyCombatState> ( ) = 0;
+		//std::cout << "Unluck\n";
+	}
+
 	return Hook_OnTick.GetOriginalFunction ( &OnTick )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
+}
+
+static mCFunctionHook Hook_MagicTransform;
+GEInt GE_STDCALL MagicTransform ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+
+	// TODO: Check for NPCs Transformation
+	if ( !Self.IsPlayer ( ) )
+		return 1;
+
+	Entity transformedSpawn = Self.Interaction.GetSpell ( ).Magic.GetSpawn ( );
+	Template spawn = transformedSpawn.GetTemplate ( );
+	bCMatrix pos = Self.GetPose ( );
+
+	Entity spawnedEntity = Entity::Spawn ( spawn , pos );
+	if ( !spawnedEntity.FindSpawnPose ( pos , spawnedEntity , GETrue , 0 ) ) {
+		EffectSystem::StartEffect ( "CAST_FAIL" , pos , spawnedEntity );
+		spawnedEntity.Kill ( );
+		return 0;
+	}
+
+	spawnedEntity.MoveTo ( pos );
+
+	GEInt transformDuration = GetScriptAdmin ( ).CallScriptFromScript ( "GetTransformDuration" , a_pSelfEntity , a_pOtherEntity , 0 );
+	if ( Self.Inventory.GetCategory ( a_iArgs ) == gEWeaponCategory::gEWeaponCategory_Magic ) {
+		transformDuration = -1;
+	}
+	GetScriptAdmin ( ).CallScriptFromScript ( "SendPerceptionTransform" , &Self , &None, 0 );
+
+	Self.StartTransform ( spawnedEntity , transformDuration , GEFalse );
+	GEInt leftHand = speciesLeftHand ( spawnedEntity );
+	GEInt rightHand = speciesRightHand ( spawnedEntity );
+
+	//spawnedEntity.Inventory.HoldStacks ( leftHand , rightHand );
+
+	//TODO extra Functions
+	typedef void ( *Func1 )( GEInt, GEInt, Entity );
+	typedef void ( *Func2 )( Entity );
+	Func1 func1 = ( Func1 )RVA_ScriptGame ( 0x2e50 );
+	Func2 func2 = ( Func2 )RVA_ScriptGame ( 0x7a00 );
+	//func1 ( leftHand , rightHand , spawnedEntity );
+	func2 ( spawnedEntity );
+
+	//spawnedEntity.Routine.SetTask ( "PS_Melee" );
+
+	return 1;
+}
+
+
+static mCFunctionHook Hook_StartTransform;
+void GE_STDCALL StartTransform ( Entity* p_targetEntity , GEFloat p_duration , GEBool p_bool ) {
+	Entity Self = *Hook_StartTransform.GetSelf<Entity*> ( );
+	std::cout << "Start: " << Self.GetName() << "\n";
+	//TODO Check for NPCs
+	if ( !Self.IsPlayer ( ) )
+		return;
+	if ( !p_bool ) {
+		Self.GetGameEntity ( )->Enable ( GEFalse );
+		Self.EnableCollision ( GEFalse );
+		gCEntity* entity = Self.GetGameEntity ( );
+		gCDynamicCollisionCircle_PS* dcc = ( gCDynamicCollisionCircle_PS* )entity->GetPropertySet ( eEPropertySetType_DynamicCollisionCircle );
+		if ( dcc != 0 ) {
+			Self.Navigation.SetDCCEnabled ( GEFalse );
+		}
+	}
+
+	if ( Self.PlayerMemory.IsValid ( ) ) {
+		Self.PlayerMemory.AccessProperty<PSPlayerMemory::PropertySecondsTransformRemain> ( ) = p_duration;
+	}
+
+	GEInt playerLevel = Self.NPC.GetProperty<PSNpc::PropertyLevel>();
+	GEBool isDruid = Self.Inventory.IsSkillActive ( "Perk_Druid" );
+	GEBool isWaterMage = Self.Inventory.IsSkillActive ( "Perk_WaterMage" );
+	GEBool hasManaRegen = Self.Inventory.IsSkillActive ( "Perk_MasterMage" );
+
+	/**
+	* Áfter TakeOver, The Player Takes over the targetEntity
+	* The TargetEntity had no PlayerMemory and after the TakeOver, it gets the PlayerMem
+	* with every Attribute of the Player on 100
+	* Also the Self Entity (PC_Hero) is no longer the Player in checks
+	* The Player can be taken from the Entity::GetPlayer() function, which also 
+	* has most of the Entities properties. 
+	* PlayerMemory and CharacterControll got added to the new Player Entity
+	* Changes to the new Entity will not affect the PC_Hero Entity (default Player)
+	*/
+	p_targetEntity->StartTakeOver ( );
+
+	// needs to be this. Cant be targetEntity (or Self)
+	Entity player = Entity::GetPlayer ( );
+
+	if ( player.Routine.IsValid ( ) )
+		player.Routine.ContinueRoutine ( );
+
+	player.NPC.EnableStatusEffects ( gEStatusEffect::gEStatusEffect_Transformed, GETrue );
+
+	GEInt targetLevel = p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( );
+	if ( isDruid )
+		targetLevel *= 1.5;
+
+	if ( isWaterMage )
+		targetLevel += 10;
+
+	GEInt newLevel = ( targetLevel + playerLevel) / 2;
+
+	p_targetEntity->NPC.AccessProperty<PSNpc::PropertyLevel> ( ) = newLevel;
+	p_targetEntity->NPC.AccessProperty<PSNpc::PropertyLevelMax> ( ) = targetLevel;
+		
+	// Stats must be in PlayerMem for some reason ... 
+	// Either do it here, or adjust all the Other things
+	player.PlayerMemory.SetHitPointsMax(p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 20);
+	player.PlayerMemory.SetHitPoints(p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 20);
+	player.PlayerMemory.SetManaPointsMax(p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 10);
+	player.PlayerMemory.SetManaPoints (p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 10);
+	player.PlayerMemory.SetStaminaPointsMax(p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 10);
+	player.PlayerMemory.SetStaminaPoints (p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 10);
+
+	if ( hasManaRegen ) {
+		p_targetEntity->Inventory.AssureItemsEx ( "It_Perk_MasterMage" , 0 , 1 , -1 , GETrue );
+	}
+}
+
+static mCFunctionHook Hook_PS_Melee_Attack;
+GEInt PS_Melee_Attack ( int* p_ptr , gCScriptProcessingUnit* p_PSU ) {
+	Entity Self = p_PSU->GetSelfEntity ( );
+	if ( IsInRecovery ( Self ) ) {
+		return 0;
+	}
+	return Hook_PS_Melee_Attack.GetOriginalFunction ( &PS_Melee_Attack )( p_ptr , p_PSU );
+}
+
+static mCFunctionHook Hook_PS_Melee_PowerAttack;
+GEInt PS_Melee_PowerAttack ( int* p_ptr , gCScriptProcessingUnit* p_PSU ) {
+	Entity Self = p_PSU->GetSelfEntity ( );
+	if ( IsInRecovery ( Self ) ) {
+		return 0;
+	}
+	return Hook_PS_Melee_PowerAttack.GetOriginalFunction ( &PS_Melee_PowerAttack )( p_ptr , p_PSU );
+}
+
+static mCFunctionHook Hook_GetAniName; 
+void GetAniName ( bCString* p_retString , eCEntity* p_entity , gEAction p_action , bCString p_actionString , bCString* p_directionString , GEBool p_bool ) {
+	gCScriptProcessingUnit* selfPSU = Hook_GetAniName.GetSelf< gCScriptProcessingUnit*> ( );
+	Hook_GetAniName.GetOriginalFunction ( &GetAniName )( p_retString , p_entity , p_action , p_actionString , p_directionString , p_bool );
+	/*
+	std::cout << "\nEntity: " << p_entity->GetName ( )
+		<< "\nAction: " << p_action
+		<< "\nActionString: " << p_actionString.GetText ( )
+		<< "\nDirection: " << p_directionString->GetText ( )
+		<< "\nBool: " << p_bool
+		<< "\nAniName: " << p_retString->GetText ( )
+		<< "\n";*/
+	GEInt index = p_retString->Find ( "2H" );
+	if ( index != -1 ) {
+		p_retString->Replace ( "2H" , "1H" );
+		if ( p_retString->Contains ( "FinishingAttack" ) && p_action != gEAction_FinishingAttack ) 
+			p_retString->Replace ( "FinishingAttack" , "PierceAttack" );
+	}
+	
 }
 
 void HookFunctions ( ) {
@@ -416,6 +589,29 @@ void HookFunctions ( ) {
 	Hook_OnTick
 		.Prepare ( RVA_ScriptGame ( 0xb0ef0 ), &OnTick )
 		.Hook ( );
+
+	Hook_MagicTransform.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicTransform" )->m_funcScript, &MagicTransform , mCBaseHook::mEHookType_OnlyStack );
+
+	static mCFunctionHook Hook_SpeciesRightHand;
+	Hook_SpeciesRightHand
+		.Prepare ( RVA_ScriptGame ( 0xb200 ) , &speciesRightHand )
+		.Hook ( );
+
+	Hook_StartTransform
+		.Prepare ( RVA_Script ( 0x1afe0 ) , &StartTransform , mCBaseHook::mEHookType_ThisCall )
+		.Hook ( );
+
+	//TODO: Bring that shit on!
+	//Hook_PS_Melee_Attack
+	//	.Prepare ( RVA_ScriptGame ( 0x7eee0 ) , &PS_Melee_Attack )
+	//	.Hook ( );
+
+	//Hook_PS_Melee_PowerAttack
+	//	.Prepare ( RVA_ScriptGame ( 0x7f420 ) , &PS_Melee_PowerAttack )
+	//	.Hook ( );
+	//Hook_GetAniName
+	//	.Prepare ( RVA_Game ( 0x16f840 ) , &GetAniName , mCBaseHook::mEHookType_ThisCall )
+	//	.Hook ( );
 }
 
 /*ME_DEFINE_AND_REGISTER_SCRIPT ( MagicSummonWolfPack )

@@ -269,14 +269,15 @@ GEBool CheckHandUseTypesNB ( gEUseType p_lHand , gEUseType p_rHand , Entity& ent
         .Interaction.GetUseType ( ) == p_rHand );
 }
 
+// TODO: Adjusted Skill level, maybe change back :)
 GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     if ( p_entity != Entity::GetPlayer ( ) ) {
         GEU32 npcLevel = getPowerLevel(p_entity);
         //std::cout << "Entity: " << p_entity.GetName ( ) << "\tLevel: " << npcLevel << std::endl;
         if ( npcLevel > 69 )
-            return 4;
+            return 5;
         if ( npcLevel > 49 )
-            return 3;
+            return 4;
         if ( npcLevel > 34 )
             return 2;
         if ( npcLevel > 20 )
@@ -294,7 +295,7 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     switch ( playerUseType ) {
     case gEUseType_1H:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_3" ) ) )
-            level = 2;
+            level = 3;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
             level = 1;
         if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , p_entity )
@@ -305,20 +306,20 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     case gEUseType_Axe:
     case gEUseType_Halberd:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_3" ) ) )
-            level = 2;
+            level = 3;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_2" ) ) )
             level = 1;
         break;
     case gEUseType_Staff:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_3" ) ) )
-            level = 2;
+            level = 3;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_2" ) ) )
             level = 1;
         break;
     case gEUseType_Cast:
         GEInt playerInt = p_entity.PlayerMemory.GetIntelligence ( );
         if ( playerInt > 199 ) 
-            level = 2;
+            level = 3;
         else if ( playerInt > 99 ) 
             level = 1;
         break;
@@ -580,6 +581,96 @@ GEBool IsHoldingTwoHandedWeapon ( Entity& entity ) {
 
     gEUseType weaponUseType = entity.Inventory.GetItemFromSlot ( gESlot_RightHand ).Interaction.GetUseType ( );
     if ( weaponUseType == gEUseType_2H || weaponUseType == gEUseType_Staff || weaponUseType == gEUseType_Axe || weaponUseType == gEUseType_Halberd || weaponUseType == gEUseType_Pickaxe ) {
+        return GETrue;
+    }
+    return GEFalse;
+}
+
+GEBool IsInSameParty ( Entity& p_self , Entity& p_other ) {
+    Entity partyLeader = p_self.Party.GetPartyLeader ( );
+    if ( partyLeader == None )
+        return GEFalse;
+    return partyLeader == p_other.Party.GetPartyLeader ( );
+}
+
+GEBool IsPlayerInCombat ( ) {
+    Entity Player = Entity::GetPlayer ( );
+    bTObjArray<Entity> entities = Entity::GetNPCs ( );
+    if ( !entities.IsEmpty ( ) ) {
+        GEInt i = 0;
+        while ( i < entities.GetCount ( ) ) {
+            Entity e = entities.AccessAt ( i++ );
+            if ( e == None || e.IsDead ( ) || e.IsDown ( ) || e.IsPlayer ( ) || e.GetDistanceTo ( Player ) > 90000.0f )
+                continue;
+            if ( e.Routine.GetProperty<PSRoutine::PropertyAIMode> ( ) == gEAIMode_Combat 
+                && e.NPC.GetCurrentTarget ( ) == Player ) {
+                return GETrue;
+            }
+        }
+    }
+    return GEFalse;
+}
+
+GEInt speciesLeftHand ( Entity p_entity ) {
+    gESpecies species = p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( );
+
+    if ( species == gESpecies_Troll ) {
+        GEInt retVal = p_entity.Inventory.AssureItems ( "TrollFist" , gEItemQuality::gEItemQuality_Diseased , 1 );
+        return retVal;
+    }
+    return -1;
+}
+
+GEInt speciesRightHand ( Entity p_entity ) {
+    gESpecies species = p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( );
+
+    switch ( species ) {
+    case gESpecies_Zombie:
+    case gESpecies_Varan:
+    case gESpecies_Ripper:
+        return p_entity.Inventory.AssureItems ( "Fist" , gEItemQuality::gEItemQuality_Diseased , 1 );
+    case gESpecies_Demon:
+        return p_entity.Inventory.AssureItems ( "It_2H_DemonSword_01" , gEItemQuality::gEItemQuality_Burning , 1 );
+    case gESpecies_Goblin:
+        return p_entity.Inventory.AssureItems ( "It_1H_Club_01" , gEItemQuality::gEItemQuality_Worn , 1 );
+    case gESpecies_Troll:
+        return p_entity.Inventory.AssureItems ( "TrollFist" , gEItemQuality::gEItemQuality_Diseased , 1 );
+    case gESpecies_FireVaran:
+    case gESpecies_FireGolem:
+        return p_entity.Inventory.AssureItems ( "Fist" , gEItemQuality::gEItemQuality_Burning , 1 );
+    case gESpecies_Bloodfly:
+    case gESpecies_SwampLurker:
+    case gESpecies_ScorpionKing:
+        return p_entity.Inventory.AssureItems ( "Fist" , gEItemQuality::gEItemQuality_Poisoned , 1 );
+    case gESpecies_Ogre:
+        return p_entity.Inventory.AssureItems ( "It_Axe_OgreMorningStar_01" , /*gEItemQuality::gEItemQuality_Worn*/0 , 1 );
+    case gESpecies_IceGolem:
+        return p_entity.Inventory.AssureItems ( "Fist" , gEItemQuality::gEItemQuality_Frozen , 1 );
+    case gESpecies_Stalker:
+        return p_entity.Inventory.AssureItems ( "It_Axe_SpikedClub_01" , gEItemQuality::gEItemQuality_Worn , 1 );
+    case gESpecies_Dragon:
+        return p_entity.Inventory.AssureItems ( "It_Spell_Fireball" , 0 , 1 );
+    default: 
+        return p_entity.Inventory.AssureItems ( "Fist" , 0 , 1 );
+    }
+    
+    return -1;
+}
+
+GEBool IsInRecovery ( Entity& p_entity ) {
+    eCVisualAnimation_PS* va = ( eCVisualAnimation_PS* )p_entity.Animation.m_pEngineEntityPropertySet;
+    if ( ( GEU32 )va == 0 )
+        return GEFalse;
+
+    bCString* ptrCurrentMotionDescription = ( bCString* )( *( GEU32* )( ( GEU32 )va + 0xE8 ) + 0x4 );
+    //std::cout << "String Ani: " << ptrCurrentMotionDescription << "\n";
+    GEInt firstP = ptrCurrentMotionDescription->Find ( "_" , 4 );
+    GEInt secondP = ptrCurrentMotionDescription->Find ( "_" , 12 );
+    bCString test = "";
+    ptrCurrentMotionDescription->GetWord ( 4 , "_" , test , GETrue , GETrue );
+    //std::cout << "Test: " << test.GetText ( ) << "\n";
+    if ( test.Contains ( "P0" ) && ptrCurrentMotionDescription->Contains ( "Recover" ) ) {
+        //std::cout << "String Ani: " << ptrCurrentMotionDescription->GetText ( ) << "\n";
         return GETrue;
     }
     return GEFalse;

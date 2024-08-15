@@ -239,7 +239,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         HitForce = static_cast< gEHitForce >(HitForce - getMonsterHyperArmorPoints(Victim, VictimAction));
         //std::cout << "HitForce after Monster: " << HitForce << "\n";
 
-        if ((GEInt)HitForce <= -2)
+        if ((GEInt)HitForce <= -1)
         {
             HitForce = gEHitForce_Minimal;
         }
@@ -466,6 +466,10 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         FinalDamage *= 0.8;
         break;
     }
+    if ( GetScriptAdmin().CallScriptFromScript ( "GetStaminaPoints" , &DamagerOwner , &None , 0 ) <= 50 )
+        FinalDamage *= 0.7;
+    else if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &DamagerOwner , &None , 0 ) <= 20 )
+        FinalDamage *= 0.5;
     //std::cout << "Finaldamage after Vulnerabilities: " << FinalDamage << "\n";
 
     // Handelt es sich um einen Powercast? (Player and NPCs)
@@ -721,8 +725,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
         // Ausdauer und ggf. Lebenspunkte abziehen
 
-        //std::cout << "StateTime: " << Victim.Routine.GetStateTime ( ) << "\t AniState: " << Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() <<"\n";
-        //std::cout << "LastHit: " << lastHit << "\tVictimID: " << Victim.GetGameEntity()->GetID().GetText() << "\tName: " << Victim.GetName() << "\tSize Map: " << PerfektBlockTimeStampMap.size() << "\n";
         if ( lastHit > 12 && (Victim.Routine.GetStateTime ( ) < 0.05 
             || (DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction!=gEAction_HackAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1) ) 
             && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade ) {
@@ -876,7 +878,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         Victim.Effect.StartRuntimeEffect ( "eff_magic_firespell_target_01" );
     }
     // Dead, KnockDown or KnockedOut
-    if ( iVictimHitPoints - FinalDamage2 <= 0 )
+    if ( (iVictimHitPoints - FinalDamage2) <= 0 )
     {
         if ( ScriptAdmin.CallScriptFromScript ( "IsDeadlyDamage" , &Victim , &Damager , 0 ) )
         {
@@ -1006,11 +1008,10 @@ GEInt AddStaminaPoints ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity 
 
 static mCFunctionHook Hook_StaminaUpdateOnTick;
 GEInt StaminaUpdateOnTick ( Entity p_entity ) {
-    //std::cout << "Lengh of List: " << LastStaminaUsageMap.size ( ) << "\n";
     const GEInt standardStaminaRecovery = staminaRecoveryPerTick;
     GEInt retStaminaDelta = 0;
 
-    if ( p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction::gEAction_Aim ) {
+    if ( p_entity.IsPlayer() && p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction::gEAction_Aim ) {
         if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &p_entity , &None , 0 ) <= 7 ) {
             p_entity.Routine.FullStop ( );
             p_entity.Routine.SetState ( "PS_Normal" );
@@ -1020,17 +1021,20 @@ GEInt StaminaUpdateOnTick ( Entity p_entity ) {
         return StaminaUpdateOnTickHelper ( p_entity , -7 );
     }
 
-    if ( p_entity.IsSprinting ( ) ||  p_entity == Entity::GetPlayer ( ) && ( p_entity.IsSwimming ( ) && *( BYTE* )RVA_Executable ( 0x27FD2 ) ) ) {
+    // For Now Only for player!
+    if ( p_entity == Entity::GetPlayer ( ) && (p_entity.IsSprinting ( ) || (p_entity.IsSwimming ( ) && *( BYTE* )RVA_Executable ( 0x27FD2 )) ) ) {
         if ( p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Bloodfly ) {
             return StaminaUpdateOnTickHelper (p_entity, -1 );
         }
 
         if ( eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing ) {
-            if ( p_entity.Inventory.IsSkillActive(Template("Perk_Sprinter") ))
+            if ( p_entity.Inventory.IsSkillActive(Template("Perk_Sprinter")) 
+                || ( p_entity != Entity::GetPlayer() && getPowerLevel(p_entity ) >= 30) )
                 return StaminaUpdateOnTickHelper ( p_entity , -4 );
             return StaminaUpdateOnTickHelper ( p_entity , -8 );
         }
-        if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Sprinter" ) ) )
+        if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Sprinter" ) )
+           || ( p_entity != Entity::GetPlayer ( ) && getPowerLevel ( p_entity ) >= 30 ) )
             return StaminaUpdateOnTickHelper ( p_entity , -5 );
         return StaminaUpdateOnTickHelper ( p_entity , -10 );
     }
@@ -1100,11 +1104,30 @@ GEInt GetAttitudeSummons ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntit
     if ( Self.Party.GetPartyLeader() != None && Self.Party.GetPartyLeader ( ) == Other.Party.GetPartyLeader ( ) )
         return 1;
 
-    if ( Self.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned && Self.Party.GetPartyLeader() != Other && Self.Party.GetPartyLeader().NPC.GetCurrentTarget ( ) != Other ) {
-        return ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Self.Party.GetPartyLeader () , &Other , a_iArgs );
+    if ( Self.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned
+        && Self.Party.GetPartyLeader ( ) != Other && Self.Party.GetPartyLeader ( ) != None ) {
+
+        if ( !(Self.Party.GetPartyLeader ( ).NPC.GetCurrentTarget ( ) == Other
+            && Self.Party.GetPartyLeader ( ).NPC.GetProperty<PSNpc::PropertyCombatState> ( ) == 1) ) {
+
+            GEInt retVal = ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Self.Party.GetPartyLeader ( ) , &Other , a_iArgs );
+            if ( retVal != 4 )
+                return 2;
+            return retVal;
+        }
     }
-    if ( Other.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned && Other.Party.GetPartyLeader ( ) != Self && Other.Party.GetPartyLeader ( ).NPC.GetCurrentTarget ( ) != Self ) {
-        return ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Self , &Other.Party.GetPartyLeader () , a_iArgs );
+
+    if ( Other.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned
+        && Other.Party.GetPartyLeader ( ) != Self && Other.Party.GetPartyLeader ( ) != None ) {
+
+        if ( !( Other.Party.GetPartyLeader ( ).NPC.GetCurrentTarget ( ) == Self
+            && Other.Party.GetPartyLeader ( ).NPC.GetProperty<PSNpc::PropertyCombatState> ( ) == 1 ) ) {
+
+            GEInt retVal = ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Other.Party.GetPartyLeader ( ) , &Self , a_iArgs );
+            if ( retVal != 4 )
+                return 2;
+            return retVal;
+        }
     }
     return Hook_GetAttituteSummons.GetOriginalFunction(&GetAttitudeSummons)( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
 }
@@ -1221,30 +1244,20 @@ void GiveXPPowerlevel ( gCNPC_PS* p_npc ) {
     Hook_GiveXPPowerlevel.SetImmEax ( powerLevel );
 }
 
-static mCFunctionHook Hook_Shoot;
+/*static mCFunctionHook Hook_Shoot;
 
 GEInt Shoot ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
     INIT_SCRIPT_EXT ( Self , Other );
-    if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &Self , &None , 0 ) <= 0 ) {
+    if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &Self , &None , 0 ) <= 1 ) {
         Self.Routine.FullStop ( );
         Self.Routine.SetState ( "PS_Normal" );
-        //bCString aniname = p_entity.GetAni ( gEAction_AbortAttack , gEPhase::gEPhase_Begin );
-        //p_entity.StartPlayAni ( aniname , 0 , GETrue , 0 , GEFalse );
+        std::cout << "BRUCCHCHHSAHCHACHHC " << GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &Self , &None , 0 ) << "\n";
+        bCString aniname = Self.GetAni ( gEAction_AbortAttack , gEPhase::gEPhase_Begin );
+        Self.StartPlayAni ( aniname , 0 , GETrue , 0 , GEFalse );
         return 0;
     }
     return Hook_Shoot.GetOriginalFunction ( &Shoot )( a_pSPU , a_pSelfEntity, a_pOtherEntity, a_iArgs );
-}
-
-
-/*static mCCallHook Hook_NPCAnimationSpeed;
-void NPCAnimationSpeed ( Entity* p_entity, GEFloat * p_speedMult ) {
-    GEInt staminapoints = GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , p_entity , &None , 0 );
-    if ( staminapoints <= 20 )
-        *p_speedMult *= 0.75;
-    if ( staminapoints <= 50 )
-        *p_speedMult *= 0.875;
 }*/
-
 
 extern "C" __declspec( dllexport )
 gSScriptInit const * GE_STDCALL ScriptInit( void )
@@ -1274,16 +1287,7 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
             .Prepare ( RVA_ScriptGame ( 0xb0520 ) , &StaminaUpdateOnTick , mCBaseHook::mEHookType_OnlyStack )
             .Hook ( );
     }
-
-    /*Hook_NPCAnimationSpeed
-        .Prepare ( RVA_ScriptGame ( 0x4d9a ) , &NPCAnimationSpeed , mCBaseHook::mEHookType_OnlyStack , mCRegisterBase::mERegisterType_Ebp )
-        .InsertCall ( )
-        .AddStackArgEbp ( 0x8 )
-        .AddPtrStackArg ( 0x0C )
-        .ReplaceSize( 0x4daa - 0x4d9a )
-        .RestoreRegister ( )
-        .Hook ( );*/
-
+    
     static mCFunctionHook Hook_Assesshit;
     static mCFunctionHook Hook_IsEvil;
     static mCFunctionHook Hook_GetAnimationSpeedModifier;
@@ -1321,12 +1325,12 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
         .RestoreRegister ( )
         .Hook ( );
 
-    Hook_Shoot  
-        .Prepare ( RVA_ScriptGame ( 0x86450 ) , &Shoot )
-        .Hook ( );
+    //Hook_Shoot  
+    //    .Prepare ( RVA_ScriptGame ( 0x86450 ) , &Shoot )
+    //    .Hook ( );
 
     Hook_Shoot_Velocity
-        .Prepare ( RVA_ScriptGame ( 0x8680a ) , &Shoot_Velocity )
+        .Prepare ( RVA_ScriptGame ( 0x86882 ) , &Shoot_Velocity )
         .InsertCall ( )
         .AddPtrStackArgEbp ( 0x8 )
         .AddPtrStackArgEbp ( 0xC )
@@ -1369,8 +1373,8 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD dwReason, LPVOID )
     switch( dwReason )
     {
     case DLL_PROCESS_ATTACH:
-        //AllocConsole ( );
-        //freopen_s ( ( FILE** )stdout , "CONOUT$" , "w" , stdout );
+        AllocConsole ( );
+        freopen_s ( ( FILE** )stdout , "CONOUT$" , "w" , stdout );
         ::DisableThreadLibraryCalls( hModule );
         break;
     case DLL_PROCESS_DETACH:
