@@ -4,6 +4,6 @@
 #include "utility.h"
 #include "CallHook.h"
 #include "FunctionHook.h"
+#include "SharedConfig.h"
 
-static char* BONETARGET = "Spine_Spine_3";
-void PatchCode1 ( );
+void PatchCode ( );

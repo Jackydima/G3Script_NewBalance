@@ -35,7 +35,6 @@ void Shoot_Velocity ( gCScriptProcessingUnit* p_PSU , Entity* p_self , Entity* p
 		return;
 
 	bCVector targetVecPos = targetBoneMatrix.AccessTranslation ( );
-	// AI-Randomness#
 	bCVector targetVec = targetVecPos - projectileItem.GetPosition ( );
 	
 	// Absolute Randomness of shots
@@ -79,11 +78,72 @@ void CombatMoveScale ( void* p_Ptr , gCScriptProcessingUnit* p_PSU, bCVector* ve
 		break;
 	case gEAction_HackAttack:
 		if ( Self.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Orc )
-			vec->Scale ( 3.8 );
+			vec->Scale ( 2.17 * ATTACK_REACH_MULTIPLIER );
 		else 
-			vec->Scale ( 1.75 );
+			vec->Scale ( 1.2 * ATTACK_REACH_MULTIPLIER );
+		break;
+	case gEAction_QuickAttack:
+	case gEAction_QuickAttackR:
+	case gEAction_QuickAttackL:
+		vec->Scale ( 0.85 * ATTACK_REACH_MULTIPLIER );
+		break;
+	case gEAction_PowerAttack:
+		vec->Scale ( 1.2 * ATTACK_REACH_MULTIPLIER );
 		break;
 	default:
-		vec->Scale ( 1.75 );
+		vec->Scale ( ATTACK_REACH_MULTIPLIER );
 	}
+}
+
+/**
+* Adjusted Bow Effect on Aiming for Player
+*/
+void PS_Ranged_PowerAim ( void* p_Ptr , gCScriptProcessingUnit* p_PSU, void* esp ) {
+	Entity player = p_PSU->GetSelfEntity ( );
+	void* address = &powerAimEffectName;
+	if ( player.Inventory.IsSkillActive ( "Perk_Bow_3" ) ) {
+		address = &powerAimEliteEffectName;
+	}
+	else if ( player.Inventory.IsSkillActive ( "Perk_Bow_2" ) ) {
+		address = &powerAimWarriorEffectName;
+	}
+	DWORD currProt , newProt;
+	VirtualProtect ( ( LPVOID )esp , sizeof ( void* ) , PAGE_EXECUTE_READWRITE , &currProt );
+	memset ( ( LPVOID )esp , 0x90 , sizeof ( void* ) );
+	memcpy ( ( LPVOID )esp , address , sizeof ( void* ) );
+	VirtualProtect ( ( LPVOID )esp , sizeof ( void* ) , currProt , &newProt );
+}
+
+void ZS_Ranged_PowerAim ( void* p_Ptr , gCScriptProcessingUnit* p_PSU , void* esp ) {
+	Entity Self = p_PSU->GetSelfEntity ( );
+	void* address = &powerAimEffectName;
+
+	if ( getPowerLevel ( Self ) >= 40 ) {
+		address = &powerAimEliteEffectName;
+	}
+	else if ( getPowerLevel ( Self ) >= 30 ) {
+		address = &powerAimWarriorEffectName;
+	}
+	DWORD currProt , newProt;
+	VirtualProtect ( ( LPVOID )esp , sizeof ( void* ) , PAGE_EXECUTE_READWRITE , &currProt );
+	memset ( ( LPVOID )esp , 0x90 , sizeof ( void* ) );
+	memcpy ( ( LPVOID )esp , address , sizeof ( void* ) );
+	VirtualProtect ( ( LPVOID )esp , sizeof ( void* ) , currProt , &newProt );
+}
+
+
+void AssureProjectiles ( GEInt registerBaseStack ) {
+	Entity* self = ( Entity* )( registerBaseStack - 0x2A0 );
+	//std::cout << "Self: " << self->GetName() << "\n";
+	if ( *self == None ) {
+		//std::cout << "Unlucky" << "\n";
+		return;
+	}
+	GEInt random = Entity::GetRandomNumber ( 10 );
+	GEInt leftHandWeaponIndex = self->Inventory.FindStackIndex ( gESlot_LeftHand );
+	Hook_AssureProjectiles.SetImmEbx<GEInt> ( leftHandWeaponIndex );
+	gEUseType leftHandUseType = self->Inventory.GetUseType ( leftHandWeaponIndex );
+	Template projectile = getProjectile ( *self , leftHandUseType );
+	GEInt stack = self->Inventory.AssureItems ( projectile , 0 , random + 10 );
+	*( GEInt* )( registerBaseStack - 0x2C4 ) = stack;
 }

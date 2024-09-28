@@ -86,6 +86,7 @@
     <ClInclude Include="CallHook.h" />
     <ClInclude Include="ge_DamageReceiver_ext.h" />
     <ClInclude Include="me_propertymacros.h" />
+    <ClInclude Include="SharedConfig.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="Script_NewBalance.h" />
   </ItemGroup>

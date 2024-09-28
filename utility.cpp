@@ -16,12 +16,14 @@ GEInt getPowerLevel ( Entity& p_entity ) {
     if ( level > p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) )
         level = p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( );
     //std::cout << "PowerLevel of: " << p_entity.GetName ( ) << ":\t" << level << "\n";
+    if ( useAlwaysMaxLevel )
+        level = p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( );
     return level;
 }
 
 Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
     GEInt powerLevel = getPowerLevel ( p_entity );
-    gEPoliticalAlignment aligmnent = p_entity.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( );
+    gEPoliticalAlignment alignment = p_entity.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( );
     gESpecies targetSpecies = p_entity.NPC.GetCurrentTarget ( ).NPC.GetProperty<PSNpc::PropertySpecies> ( );
     GEInt random = Entity::GetRandomNumber ( 100 );
     Template projectile;
@@ -42,14 +44,14 @@ Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
         else if ( targetSpecies == gESpecies_FireGolem || targetSpecies == gESpecies_Golem || targetSpecies == gESpecies_IceGolem || targetSpecies == gESpecies_Skeleton ) {
             projectile = Template ( "BluntArrow" );
         }
-        else if ( aligmnent == gEPoliticalAlignment_Ass || aligmnent == gEPoliticalAlignment_Nom ) {
+        else if ( alignment == gEPoliticalAlignment_Ass || alignment == gEPoliticalAlignment_Nom ) {
             projectile = Template ( "PoisonArrow" );
         }
-        else if ( aligmnent == gEPoliticalAlignment_Nrd ) {
+        else if ( alignment == gEPoliticalAlignment_Nrd ) {
             projectile = Template ( "SharpArrow" );
         }
         else if ( powerLevel >= 30 ) {
-            if ( aligmnent == gEPoliticalAlignment_Orc ) {
+            if ( alignment == gEPoliticalAlignment_Orc ) {
                 if ( random <= 20 ) {
                     projectile = Template ( "SharpArrow" );
                 }
@@ -122,6 +124,26 @@ GEBool isBigMonster ( Entity& p_monster ) {
     }
 
 
+}
+
+GEInt IsEvil ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+    INIT_SCRIPT_EXT ( Self , Other );
+    if ( GetScriptAdmin ( ).CallScriptFromScript ( "IsUndead" , &Self , &None , 0 ) )
+        return 1;
+    switch ( Self.NPC.GetProperty<PSNpc::PropertySpecies> ( ) ) {
+    case gESpecies_Golem:
+    case gESpecies_Demon:
+    case gESpecies_Gargoyle:
+    case gESpecies_FireGolem:
+    case gESpecies_IceGolem:
+    case gESpecies_ScorpionKing:
+        // New Check for Dragon!
+    case gESpecies_Dragon:
+        return 1;
+    default:
+        return 0;
+    }
+    //return 0;
 }
 
 GEInt CanBurn ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
@@ -338,7 +360,8 @@ GEInt GetActionWeaponLevelNB ( Entity& p_damager , gEAction p_action ) {
     gEUseType damagerWeaponType = p_damager.Inventory.GetUseType ( p_damager.Inventory.FindStackIndex ( gESlot_RightHand ) );
     switch ( p_action ) {
     case gEAction_Attack:
-        if ( damagerWeaponType == gEUseType_2H || damagerWeaponType == gEUseType_Axe ) {
+        if ( damagerWeaponType == gEUseType_2H || damagerWeaponType == gEUseType_Axe || 
+            (damagerWeaponType == gEUseType_Fist && !GetScriptAdmin().CallScriptFromScript("IsHumanoid",&p_damager, &None) ) ) {
             level = 2;
             break;
         }
@@ -531,8 +554,7 @@ GEU32 GetPoisonDamage ( Entity& attacker ) {
 }
 
 GEInt getWeaponLevelNB ( Entity& p_entity ) {
-    GEBool isPlayer = p_entity == Entity::GetPlayer ( );
-    if ( isPlayer ) {
+    if ( p_entity.IsPlayer() && !p_entity.NPC.IsTransformed ( ) ) {
         if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_2H , p_entity ) || CheckHandUseTypesNB ( gEUseType_None , gEUseType_Axe , p_entity ) ||
             CheckHandUseTypesNB ( gEUseType_None , gEUseType_Pickaxe , p_entity ) || CheckHandUseTypesNB ( gEUseType_None , gEUseType_Halberd , p_entity ) ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_3" ) ) )
@@ -674,4 +696,81 @@ GEBool IsInRecovery ( Entity& p_entity ) {
         return GETrue;
     }
     return GEFalse;
+}
+
+WarriorType GetWarriorType ( Entity& p_entity ) {
+    if ( p_entity.IsPlayer ( ) && !p_entity.NPC.IsTransformed ( ) ) {
+        if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_2H , p_entity ) || CheckHandUseTypesNB ( gEUseType_None , gEUseType_Axe , p_entity ) ||
+            CheckHandUseTypesNB ( gEUseType_None , gEUseType_Pickaxe , p_entity ) || CheckHandUseTypesNB ( gEUseType_None , gEUseType_Halberd , p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_3" ) ) )
+                return WarriorType_Elite;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_2" ) ) )
+                return WarriorType_Warrior;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_1" ) ) )
+                return WarriorType_Novice;
+        }
+        if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_1H , p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_3" ) ) )
+                return WarriorType_Elite;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
+                return WarriorType_Warrior;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1" ) ) )
+                return WarriorType_Novice;
+        }
+        if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1H_2" ) ) )
+                return WarriorType_Elite;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1H_1" ) ) )
+                return WarriorType_Warrior;
+        }
+        if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_Staff , p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_3" ) ) )
+                return WarriorType_Elite;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_2" ) ) )
+                return WarriorType_Warrior;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_1" ) ) )
+                return WarriorType_Novice;
+        }
+        if ( CheckHandUseTypesNB ( gEUseType_Bow , gEUseType_Arrow, p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Bow_3" ) ) )
+                return WarriorType_Elite;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Bow_2" ) ) )
+                return WarriorType_Warrior;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Bow_1" ) ) )
+                return WarriorType_Novice;
+        }
+        if ( CheckHandUseTypesNB ( gEUseType_CrossBow , gEUseType_Bolt , p_entity ) ) {
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Bow_3" ) ) )
+                return WarriorType_Elite;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Bow_2" ) ) )
+                return WarriorType_Warrior;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Bow_1" ) ) )
+                return WarriorType_Novice;
+        }
+        return WarriorType_None;
+    }
+    GEInt powerLevel = getPowerLevel ( p_entity );
+    if ( powerLevel >= 40 )
+        return WarriorType_Elite;
+    if ( powerLevel >= 30 )
+        return WarriorType_Warrior;
+    return WarriorType_Novice;
+}
+
+GEU32 getLastTimeFromMap ( bCString iD, std::map<bCString , GEU32>& map ) {
+    GEU32 worldTime = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
+    GEU32 retVal = 0;
+    for ( auto it = map.cbegin ( ); it != map.cend ( ); ) {
+        if ( worldTime - it->second > 400 )
+            map.erase ( it++ );
+        else
+            ++it;
+    }
+    try {
+        retVal = worldTime - map.at ( iD );
+    }
+    catch ( std::exception e ) {
+        retVal = ULONG_MAX;
+    }
+    return retVal;
 }

@@ -72,6 +72,7 @@
     <ClInclude Include="..\..\Shared\util\Util.h">
       <Filter>util</Filter>
     </ClInclude>
+    <ClInclude Include="SharedConfig.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Shared\util\Logging.inl">

@@ -6,19 +6,10 @@
 //#include "util/ScriptUtil.h"
 #include "Script.h"
 #include "utility.h"
+#include "SharedConfig.h"
 
 // eSSetupEngine[1ea] = AB; eSSetupEngine[1eb] alternative AI
 static std::map<bCString , GEU32> PerfektBlockTimeStampMap = {};
-static std::map<bCString , GEU32> LastStaminaUsageMap = {};
-static GEBool useNewBalanceMagicWeapon = GEFalse;
-static GEBool useNewStaminaRecovery = GETrue;
-static GEU32 staminaRecoveryDelay = 20;
-static GEU32 staminaRecoveryPerTick = 13;
-static GEFloat fMonsterDamageMultiplicator = 0.5;
-static GEDouble npcArmorMultiplier = 1.2;
-static GEDouble* npcArmorMultiplierPtr = &npcArmorMultiplier;
-static GEU32 startSTR = 100;
-static GEU32 startDEX = 100;
 
 gSScriptInit& GetScriptInit ( )
 {
@@ -41,11 +32,27 @@ void LoadSettings ( ) {
     if ( config.ReadFile ( "newbalance.ini" ) ) {
         useNewBalanceMagicWeapon = config.GetBool ( "Script" , "UseNewBalanceMagicWeapon" , useNewBalanceMagicWeapon );
         useNewStaminaRecovery = config.GetBool ( "Script" , "UseNewStaminaRecovery" , useNewStaminaRecovery );
+        useAlwaysMaxLevel = config.GetBool ( "Script" , "DisableNPCLeveling" , useAlwaysMaxLevel );
+        enablePerfectBlock = config.GetBool ( "Script" , "EnablePerfectBlock" , enablePerfectBlock );
+        playerOnlyPerfectBlock = config.GetBool ( "Script" , "PlayerOnlyPerfectBlock" , playerOnlyPerfectBlock );
+        useNewBalanceMeleeScaling = config.GetBool ( "Script" , "NewMeleeScaling" , useNewBalanceMeleeScaling );
+        adjustXPReceive = config.GetBool ( "Script" , "AdjustXPReceive" , adjustXPReceive );
         staminaRecoveryDelay = config.GetU32 ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
         staminaRecoveryPerTick = config.GetU32 ( "Script" , "StaminaRecoveryPerTick" , staminaRecoveryPerTick );
         npcArmorMultiplier = config.GetFloat( "Script" , "NPCProtectionMultiplier" , npcArmorMultiplier );
+        playerArmorMultiplier = config.GetFloat( "Script" , "PlayerProtectionMultiplier" , playerArmorMultiplier );
+        npcWeaponDamageMultiplier = config.GetFloat( "Script" , "NPCWeaponDamageMultiplier" , npcWeaponDamageMultiplier );
+        useNewBowMechanics = config.GetBool ( "Script" , "NewBowMechanics" , useNewBowMechanics );
+        shootVelocity = config.GetFloat ( "Script" , "ProjectileVelocity" , shootVelocity );
+        NPC_AIM_INACCURACY = config.GetFloat ( "Script" , "NPCAimInaccuracy" , NPC_AIM_INACCURACY );
+        ATTACK_REACH_MULTIPLIER = config.GetFloat ( "Script" , "AttackReachMultiplier" , ATTACK_REACH_MULTIPLIER );
         startSTR = config.GetU32 ( "Script" , "StartSTR" , startSTR );
         startDEX = config.GetU32( "Script" , "StartDEX" , startDEX );
+        blessedBonus = config.GetU32 ( "Script" , "BlessedBonus" , blessedBonus );
+        sharpBonus = config.GetU32 ( "Script" , "SharpBonus" , sharpBonus );
+        useSharpPercentage = config.GetBool ( "Script" , "UseSharpPercentage" , useSharpPercentage );
+        forgedBonus = config.GetU32 ( "Script" , "ForgedBonus" , forgedBonus );
+        wornPercentageMalus = config.GetU32 ( "Script" , "WornMalus" , wornPercentageMalus );
     }
 }
 
@@ -66,32 +73,14 @@ static GEU32 getPerfectBlockLastTime ( bCString iD ) {
     }
     return retVal;
 }
-
-static GEU32 getLastStaminaUsageTime ( bCString iD ) {
-    GEU32 worldTime = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
-    GEU32 retVal = 0;
-    for ( auto it = LastStaminaUsageMap.cbegin ( ); it != LastStaminaUsageMap.cend ( ); ) {
-        if ( worldTime - it->second > 400 )
-            LastStaminaUsageMap.erase ( it++ );
-        else
-            ++it;
-    }
-    try {
-        retVal = worldTime - LastStaminaUsageMap.at ( iD );
-    }
-    catch ( std::exception e ) {
-        retVal = ULONG_MAX;
-    }
-    return retVal;
-}
-
-
 // wird aufgerufen von DoLogicalDamage
 gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs )
 {
     INIT_SCRIPT_EXT ( Victim , Damager );
 
     gCScriptAdmin& ScriptAdmin = GetScriptAdmin ( );
+    GEU32 lastHit = getPerfectBlockLastTime ( Victim.GetGameEntity ( )->GetID ( ).GetText ( ) );
+    PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
     //std::cout << "\n--------------------------------------------------------------\n";
 
     //
@@ -255,7 +244,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     if ( Damager.CollisionShape.GetType ( ) == eEPropertySetType_Animation )
     {
         bCString BoneName = Damager.CollisionShape.GetTouchingBone ( );
-        //std::cout << "BoneName: " << BoneName << "\n";
         if ( BoneName.Contains ( "_Head" , 0 ) ) // Kopfschuß
         {
             isHeadshot = GETrue;
@@ -266,8 +254,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
        && !VictimItemTemplateName.Contains("Heal") && !isHeadshot ) {
         HitForce = static_cast< gEHitForce >( HitForce - GetHyperActionBonus ( VictimAction ) );
     }
-    
-    //std::cout << "Hitforce after Special Hyperarmor: " << HitForce << "\n";
     GEInt FinalDamage = iWeaponDamage;
 
     // Headshot? -> Double damage
@@ -275,7 +261,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     if ( isHeadshot ) {
         FinalDamage *= 2;
     }
-    //std::cout << "Finaldamage after Head: " << FinalDamage << "\n";
 
     // Player attacks, while not being transformed
     if ( Player == DamagerOwner && !Player.NPC.IsTransformed ( ) )
@@ -292,7 +277,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                 FinalDamage *= 2;
 
             }
-            //std::cout << "Finaldamage after Magictest: " << FinalDamage << "\n";
             
             // PropertyManaUsed depends on cast phase
             if ( Damager.Damage.GetProperty<PSDamage::PropertyManaUsed> ( ) )
@@ -324,31 +308,33 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                 GEInt leftWeaponStackIndex = Player.Inventory.FindStackIndex ( gESlot_LeftHand );
                 gEUseType playerRightWeaponType = Player.Inventory.GetUseType ( rightWeaponStackIndex );
 
-                GEChar* arr = ( GEChar* )*( DWORD* )( *( DWORD* )&Player.GetWeapon ( GETrue ).Item + 0x74 ); // A bit Unsafe ...
-                //if (arr != nullptr) //std::cout << "ReqAttribute1 Tag: " << arr << "\n";
-                bCString reqAttributeTag = "";
-                if ( arr != nullptr ) reqAttributeTag = bCString ( arr );
-                if ( playerRightWeaponType == gEUseType_1H && Player.Inventory.GetUseType ( leftWeaponStackIndex ) == gEUseType_1H  ) {
-                    iAttributeBonusDamage = static_cast<GEInt>(strength * 0.3 + dexterity * 0.35);
-                    //std::cout << "DEX Scaling\tBonus: " << iAttributeBonusDamage << "\n";
-                }
-                else if ( reqAttributeTag.Contains ( "DEX" ) ) {
-                    iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + dexterity * 0.4 );
-                }
-                else if ( playerRightWeaponType == gEUseType_2H ) {
-                    iAttributeBonusDamage = static_cast< GEInt >( strength * 0.55 );
-                }
-                else if ( playerRightWeaponType == gEUseType::gEUseType_Axe || playerRightWeaponType == gEUseType::gEUseType_Pickaxe ) {
-                    iAttributeBonusDamage = static_cast< GEInt >(strength * 0.6);
-                }
-                else if ( playerRightWeaponType == gEUseType_Staff || reqAttributeTag.Contains ( "INT" )
-                     || DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).Item.GetQuality ( ) & ( 8 + 16 ) ) {
-                    iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + intelligence * 0.4 + 15 ); // Because you start with low Int, (Assume 60 INT)
-                    //std::cout << "INT Scaling\tBonus: " << iAttributeBonusDamage << "\n";
+                //New Scaling
+                if ( useNewBalanceMeleeScaling ) {
+                    GEChar* arr = ( GEChar* )*( DWORD* )( *( DWORD* )&Player.GetWeapon ( GETrue ).Item + 0x74 ); // A bit Unsafe ...
+                    bCString reqAttributeTag = "";
+                    if ( arr != nullptr ) reqAttributeTag = bCString ( arr );
+                    if ( playerRightWeaponType == gEUseType_1H && Player.Inventory.GetUseType ( leftWeaponStackIndex ) == gEUseType_1H ) {
+                        iAttributeBonusDamage = static_cast< GEInt >( strength * 0.3 + dexterity * 0.35 );
+                    }
+                    else if ( reqAttributeTag.Contains ( "DEX" ) ) {
+                        iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + dexterity * 0.4 );
+                    }
+                    else if ( playerRightWeaponType == gEUseType_2H ) {
+                        iAttributeBonusDamage = static_cast< GEInt >( strength * 0.55 );
+                    }
+                    else if ( playerRightWeaponType == gEUseType::gEUseType_Axe || playerRightWeaponType == gEUseType::gEUseType_Pickaxe ) {
+                        iAttributeBonusDamage = static_cast< GEInt >( strength * 0.6 );
+                    }
+                    else if ( playerRightWeaponType == gEUseType_Staff || reqAttributeTag.Contains ( "INT" )
+                         || DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).Item.GetQuality ( ) & ( 8 + 16 ) ) {
+                        iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + intelligence * 0.4 + 15 ); // Because you start with low Int, (Assume 60 INT)
+                    }
+                    else {
+                        iAttributeBonusDamage = strength / 2;
+                    }
                 }
                 else {
                     iAttributeBonusDamage = strength / 2;
-                    //std::cout << "Normal Scaling\tBonus: " << iAttributeBonusDamage << "\n";
                 }
             }
         }
@@ -357,70 +343,66 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             iAttributeBonusDamage = 0;
         }
         FinalDamage += ScriptAdmin.CallScriptFromScript ( "GetQualityBonus" , &Damager , &Victim , FinalDamage );
-        //std::cout << "Finaldamage after Adding QualityBonus: " << FinalDamage << "\n";
-        //std::cout << "GetPlayerSkillDamageBonus: " << ScriptAdmin.CallScriptFromScript ( "GetPlayerSkillDamageBonus" , &Damager , &Victim , FinalDamage ) << "\n";
         FinalDamage += iAttributeBonusDamage;
         FinalDamage += ScriptAdmin.CallScriptFromScript ( "GetPlayerSkillDamageBonus" , &Damager , &Victim , FinalDamage );
-        //std::cout << "Finaldamage after Adding Bonuses for PC_Hero: " << FinalDamage << "\tAttributBonus was: "<< iAttributeBonusDamage << "\n";
     }
     // Damager is transformed player or NPC
     else if ( DamagerOwner.Navigation.IsValid ( ) )
     {
+        GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 ) * 2.0f - startSTR * 0.5; //STR Bonus Real
+        if ( iStrength < 10 )
+            iStrength = 10;
+        //std::cout << "STR NPC: " << iStrength << "\tDamager: " << Damager.GetName() << "\tOwner: " << DamagerOwner.GetName() << "\n";
+
         // Player is under level 2 and AB is not activated
-        if ( Player.NPC.GetProperty<PSNpc::PropertyLevel> ( ) < 2
+        /*if ( Player.NPC.GetProperty<PSNpc::PropertyLevel> ( ) < 2
             || !eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing
             //  Besitzt der Angreifer keine Waffe?
             || ( Damager.Interaction.GetOwner ( ) == None && Damager.Navigation.IsValid ( ) ) )
             //  Benutzt der Angreifer Fernkampfwaffen?
         {
-            FinalDamage = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 );
-            //std::cout << "Finaldamage after GetStrengh for NPCs: " << FinalDamage << "\n";
+            FinalDamage = iStrength;
         }
         // NPC attacks with a weapon
         else 
-        {
-            GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 );
+        {*/
             //std::cout << "NPC Strengh: " << iStrength << "\n"; 
             if ( Damager.GetName ( ) == "Fist" && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &DamagerOwner , &None , 0 ) )
             {
                 // Greift ein Mensch oder Ork mit Fäusten an?
                 FinalDamage = static_cast< GEInt >( iStrength / 2 );
-                //std::cout << "Finaldamage after Fists: " << FinalDamage << "\n";
             }
             else
             {
                 if ( IsNormalProjectileNB ( Damager ) || IsMagicProjectileNB ( Damager ) || IsSpellContainerNB ( Damager ) ) {
-                    FinalDamage = static_cast< GEInt >( iStrength * 0.9f + FinalDamage / 7.0f );
-                    //std::cout << "Finaldamage after Spell/Projectile: " << FinalDamage << "\n";
+                    FinalDamage = static_cast< GEInt >( iStrength + FinalDamage * npcWeaponDamageMultiplier );
                 }
                 // Greift ein Ork mit einer Nahkampfwaffe an?
                 else if ( DamagerOwner.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Orc )
                 {
-                    FinalDamage = static_cast< GEInt >( iStrength * 0.75f + FinalDamage / 7.0f );
-                    //std::cout << "Finaldamage after GetStrengh for Orcs: " << FinalDamage << "\n";
+                    FinalDamage = static_cast< GEInt >( iStrength + FinalDamage * npcWeaponDamageMultiplier / 2.0f );
                 }
                 // Greift ein Mensch mit einer Nahkampfwaffe an?
                 else if ( DamagerOwner.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Human )
                 {
-                    FinalDamage = static_cast< GEInt >( iStrength * 0.9f + FinalDamage / 9.0f );
-                    //std::cout << "Finaldamage after GetStrengh for Humans: " << FinalDamage << "\n";
+                    FinalDamage = static_cast< GEInt >( iStrength + FinalDamage * npcWeaponDamageMultiplier );
                 }
-                else if ( DamagerOwner.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Demon )
+                else if ( DamagerOwner.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Demon
+                    || DamagerOwner.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Ogre )
                 {
-                    FinalDamage = static_cast< GEInt >( iStrength * 0.9f + FinalDamage / 12.0f );
-                    //std::cout << "Finaldamage after GetStrengh for Demons: " << FinalDamage << "\n";
+                    FinalDamage = static_cast< GEInt >( iStrength + FinalDamage * npcWeaponDamageMultiplier / 2.0f );
+                }
+                else if ( FinalDamage == 0 ) {
+                    FinalDamage = iStrength;
+                }
+                // MonsterAttack
+                else if ( Damager.GetName ( ) == "Fist") {
+                    FinalDamage = static_cast< GEInt >( iStrength * 1.3f + FinalDamage );
                 }
                 else {
-                    // Probably if No Weapon is equipped (not even Fist)
-                    if ( FinalDamage == 0 ) {
-                        FinalDamage = iStrength;
-                    }
-                    else {
-                        FinalDamage = static_cast< GEInt >( iStrength * 0.9f + FinalDamage / 9.0f );
-                    }
-                    //std::cout << "Finaldamage after GetStrengh Restshit: " << FinalDamage << "\n";
+                    FinalDamage = static_cast< GEInt >( iStrength + FinalDamage * npcWeaponDamageMultiplier );
                 }
-            }
+           // }
         }
 
         // Monster attacks Orc or Human (NPC)
@@ -443,7 +425,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         if ( IsMagicProjectileNB ( Damager ) || IsSpellContainerNB ( Damager ) )
         {
             FinalDamage *= 2;
-            //std::cout << "Finaldamage after Magicspells for NPCs: " << FinalDamage << "\n";
         }
     }
 
@@ -482,22 +463,22 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             //std::cout << "Finaldamage after Powercast: " << FinalDamage << "\n";
         }
     }
-
+    //std::cout << "FinalDamage: " << FinalDamage << "\n";
     //
     // Schritt 2: Rüstung
     //
     GEInt FinalDamage2;
     GEInt iProtection = ScriptAdmin.CallScriptFromScript ( "GetProtection" , &Victim , &Damager , 0 );
     //std::cout << "Protection of Victim: " << iProtection << "\n";
-    // If AB Active, it reduces the Bonus of Armor with 0.2, because it used another system here
-    // Only a hotfix for now!
-    if ( eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing && Victim == Player && !Victim.NPC.IsTransformed()) {
-        iProtection *= 2;
-    }
-    if ( iProtection > 90 )
-        iProtection = 90;
+    GEInt pProtection = iProtection;
+    GEInt aProtection = iProtection * 0.25;
 
-    FinalDamage2 = static_cast< GEInt >( ( FinalDamage - FinalDamage * ( iProtection / 100.0f ) ) );
+    if ( pProtection > 80 ) {
+        pProtection = 80;
+    }
+    
+    FinalDamage2 = FinalDamage - aProtection;
+    FinalDamage2 = static_cast< GEInt >( ( FinalDamage2 - FinalDamage2 * ( pProtection / 100.0f ) ) );
     /*
     * Default Protection!
     if ( Victim != Player || Player.NPC.IsTransformed ( )
@@ -526,6 +507,29 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         //std::cout << "Finaldamage2 after Armor Protect for PC_Hero: " << FinalDamage2 << "\n";
     }*/
 
+    // New Feature for Percantage Based damage 
+    /*
+    GEU32 random = Entity::GetRandomNumber ( 1000 );
+    if ( !IsMagicProjectileNB ( Damager ) && !IsSpellContainerNB ( Damager ) && !IsNormalProjectileNB(Damager) ) {
+        switch ( GetWarriorType ( DamagerOwner ) ) {
+        case WarriorType_Novice:
+            if ( random > 200 )
+                FinalDamage2 *= 0.40;
+            break;
+        case WarriorType_Warrior:
+            if ( random > 400 )
+                FinalDamage2 *= 0.40;
+            break;
+        case WarriorType_Elite:
+            if ( random > 600 )
+                FinalDamage2 *= 0.40;
+            break;
+        default:
+            if ( random > 100 )
+                FinalDamage2 *= 0.40;
+        }
+    }*/
+
     //
     // Schritt 3: Angriffsart
     //
@@ -540,8 +544,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     case gEAction_QuickAttack:
     case gEAction_QuickAttackR:
     case gEAction_QuickAttackL:
-        //Quickattacken sind weniger effektiv gegen Starke NPC oder hohe Rüstung (5%)
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 0.55f - FinalDamage * 0.05f );
+        //Quickattacken sind weniger effektiv gegen Starke NPC oder hohe Rüstung (7.5%)
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 0.575f - FinalDamage * 0.075f );
         break;
 
         // Angreifer benutzt Powerattacke
@@ -551,23 +555,28 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         if ( !CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , DamagerOwner )
             || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyStatePosition> ( ) == 2 )
         {
-            //Starke Attacken ignorieren 7.5 % Rüstung
-            FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.85f + FinalDamage * 0.15f);
+            //Starke Attacken ignorieren 10 % Rüstung
+            FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.80f + FinalDamage * 0.20f);
         }
         break;
 
         // Angreifer benutzt Hack-Attacke
         //   => Schaden = Schaden * 2
     case gEAction_HackAttack:
-        // Hackattacken ignorieren 10 % Rüstung
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.80f + FinalDamage * 0.20f );
+        // Hackattacken ignorieren 15 % Rüstung
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.70f + FinalDamage * 0.30f );
         break;
     }
     if ( victimDamageReceiver->GetVulnerableState ( ) == 2 ) {
         FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 2 );
+        if ( HitForce >= 3 ) {
+            HitForce = static_cast< gEHitForce >( 4 );
+        }
+        else {
+            HitForce = gEHitForce_Normal;
+        }
         victimDamageReceiver->AccessVulnerableState ( ) = 0;
     }
-    //std::cout << "Finaldamage2 after AttackType: " << FinalDamage2 << "\n";
 
     //
     // Schritt 4: Parade
@@ -593,7 +602,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Parade Magic
     if ( Damager.Projectile.IsValid ( ) && IsSpellContainerNB ( Damager ) )
     {
-        if ( ScriptAdmin.CallScriptFromScript ( "CanParadeMagic" , &Victim , &Damager , 0 ) )
+        if ( ScriptAdmin.CallScriptFromScript ( "CanParadeMagic" , &Victim , &Damager , 0 ) && !Victim.NPC.IsFrozen() )
         {
             GEInt iManaPenalty = -FinalDamage;
             if ( eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing )
@@ -626,7 +635,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Parade Missile
     else if ( IsNormalProjectileNB ( Damager ) )
     {
-        if ( ScriptAdmin.CallScriptFromScript ( "CanParadeMissile" , &Victim , &Damager , 0 ) )
+        if ( ScriptAdmin.CallScriptFromScript ( "CanParadeMissile" , &Victim , &Damager , 0 ) && !Victim.NPC.IsFrozen() )
         {
             GEInt iStaminaPenalty = -FinalDamage;
             if ( Victim == Player && Victim.Inventory.IsSkillActive ( "Perk_Shield_2" ) )
@@ -651,16 +660,11 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
     }
     // Can parade meele?
-    else if ( !Victim.NPC.IsFrozen ( ) && ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 )
+    else if ( !Victim.NPC.IsFrozen ( ) 
+        && ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 )
         || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && GetHeldWeaponCategoryNB (Victim) == gEWeaponCategory_Melee
-            && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectileNB ( Damager ) && !IsSpellContainerNB ( Damager ) )
-        || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade && Victim.Routine.GetStateTime ( ) < 0.05 ) ))
+            && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectileNB ( Damager ) && !IsSpellContainerNB ( Damager )) ))
     {
-        /*
-            TODO: Get here the check for lastHit and ignore last
-        */
-        GEU32 lastHit = getPerfectBlockLastTime ( Victim.GetGameEntity ( )->GetID ( ).GetText ( ) );
-        PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
         // Changed to Damage Numbers after Defenses
         GEInt FinalDamage3 = FinalDamage / -2;
         // Reduce damage if parading melee with shield
@@ -669,11 +673,11 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             if ( Victim != Player || !Victim.Inventory.IsSkillActive ( "Perk_Shield_2" ) )
             {
                 // Weicht von "Detaillierte Schadenberechnung" ab, dort wird ein Faktor von 2/3 anstatt 0.5 beschrieben.
-                FinalDamage3 /= 2;
+                FinalDamage3 *= 0.5f;
             }
             else
             {
-                FinalDamage3 -= FinalDamage3 / 4;
+                FinalDamage3 *= 0.3f;
             }
         }
 
@@ -723,43 +727,49 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             return gEAction_QuickParadeStumble;
         }*/
 
-        // Ausdauer und ggf. Lebenspunkte abziehen
+        
+        if ( enablePerfectBlock && ( !playerOnlyPerfectBlock || Victim.IsPlayer() ) ) {
 
-        if ( lastHit > 12 && (Victim.Routine.GetStateTime ( ) < 0.05 
-            || (DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction!=gEAction_HackAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1) ) 
-            && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade ) {
-            PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = 0;
-            Victim.Routine.SetStateTime ( 0.0 );
-            if ( !ScriptAdmin.CallScriptFromScript ( "IsInFistMode" , &Victim , &None , 0 ) )
-            {
-                if ( Damager.CollisionShape.GetPhysicMaterial ( ) != eEShapeMaterial_Metal
-                || ( Victim.Inventory.GetItemFromSlot ( gESlot_RightHand ).CollisionShape.GetPhysicMaterial ( ) != eEShapeMaterial_Metal ) )
+            if ( lastHit > 12 && ( Victim.Routine.GetStateTime ( ) < 0.05
+                || ( DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction != gEAction_HackAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1f ) )
+                && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade ) {
+                PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = 0;
+                Victim.Routine.SetStateTime ( 0.0f );
+                if ( !ScriptAdmin.CallScriptFromScript ( "IsInFistMode" , &Victim , &None , 0 ) )
                 {
-                    EffectSystem::StartEffect ( "eff_col_weaponhitslevel_metal_wood_01" , Victim );
+                    if ( Damager.CollisionShape.GetPhysicMaterial ( ) != eEShapeMaterial_Metal
+                    || ( Victim.Inventory.GetItemFromSlot ( gESlot_RightHand ).CollisionShape.GetPhysicMaterial ( ) != eEShapeMaterial_Metal ) )
+                    {
+                        EffectSystem::StartEffect ( "eff_col_weaponhitslevel_metal_wood_01" , Victim );
+                    }
+                    else
+                    {
+                        EffectSystem::StartEffect ( "eff_col_wh_01_me_me" , Victim );
+                    }
                 }
-                else
-                {
-                    EffectSystem::StartEffect ( "eff_col_wh_01_me_me" , Victim );
+                EffectSystem::StartEffect ( "parry_sound_01" , Victim );
+                if ( !Damager.GetName ( ).Contains ( "Fist" ) ) {
+                    DamagerOwner.NPC.SetCurrentAttacker ( Victim );
+                    DamagerOwner.Routine.FullStop ( );
+                    DamagerOwner.Routine.SetTask ( "ZS_HeavyParadeStumble" );
                 }
+                else {
+                    DamagerOwner.Routine.SetTask ( "ZS_Stumble" );
+                }
+                damagerOwnerDamageReceiver->AccessVulnerableState ( ) = 1;
+                return gEAction_PierceStumble;
             }
-            if ( !Damager.GetName ( ).Contains ( "Fist" ) ) {
-                DamagerOwner.NPC.SetCurrentAttacker ( Victim );
-                DamagerOwner.Routine.FullStop ( );
-                DamagerOwner.Routine.SetTask ( "ZS_HeavyParadeStumble" );
-            }
-            else {
-                DamagerOwner.Routine.SetTask ( "ZS_Stumble" );
-            } 
-            damagerOwnerDamageReceiver->AccessVulnerableState ( ) = 1;
-            return VictimAction;
         }
 
+        // Ausdauer und ggf. Lebenspunkte abziehen
         GEInt iStaminaRemaining = FinalDamage3 + ScriptAdmin.CallScriptFromScript ( "GetStaminaPoints" , &Victim , &None , 0 );
         if ( iStaminaRemaining > 0 )
             iStaminaRemaining = 0;
         ScriptAdmin.CallScriptFromScript ( "AddStaminaPoints" , &Victim , &None , FinalDamage3 );
-        //Changed back the remaining raw Damage after Def. Reductuion and Stamina consumption
-        GEInt healthDamage = iStaminaRemaining * 2 * FinalDamage2 / FinalDamage;
+        //Changed back the remaining raw Damage after Def. Reductuion and Stamina consumption#
+        GEInt healthDamage = iStaminaRemaining * 2;
+        if ( FinalDamage != 0 )
+            healthDamage = iStaminaRemaining * 2 * FinalDamage2 / FinalDamage;
         ScriptAdmin.CallScriptFromScript ( "AddHitPoints" , &Victim , &None , healthDamage );
 
         // Wenn der bei der Parade erhaltene Schaden das Opfer nicht unter 0 HP bringt
@@ -797,7 +807,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         {
             FinalDamage2 = 30;
         }
-        if ( FinalDamage2 > iVictimHitPoints )
+        if ( FinalDamage2 >= iVictimHitPoints )
         {
             FinalDamage2 = 0;
         }
@@ -872,7 +882,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
     // Process StatusEffects and Animations:
     // CanBurn
-    if ( ScriptAdmin.CallScriptFromScript ( "CanBurn" , &Victim , &Damager , FinalDamage2 ) )
+    if ( !Victim.NPC.IsFrozen() && ScriptAdmin.CallScriptFromScript ( "CanBurn" , &Victim , &Damager , FinalDamage2 ) )
     {
         Victim.NPC.EnableStatusEffects ( gEStatusEffect_Burning , GETrue );
         Victim.Effect.StartRuntimeEffect ( "eff_magic_firespell_target_01" );
@@ -958,6 +968,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         Victim.Routine.SetTask ( "ZS_PierceStumble" );
         return gEAction_PierceStumble;
     }
+    // Freeze Reduced Timer on Hit
 
     // Scream or make HitEffect, but no Stumble also processes logic when you hit someone, like setting up combat mode
     if ( HitForce <= gEHitForce_Minimal )
@@ -993,328 +1004,53 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     return gEAction_Stumble;
 }
 
-static mCFunctionHook Hook_AddStaminaPoints;
-GEInt AddStaminaPoints ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs ) {
-    INIT_SCRIPT_EXT ( Self , Other );
-    if ( a_iArgs < 0 ) {
-        LastStaminaUsageMap[Self.GetGameEntity ( )->GetID ( ).GetText ( )] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
-    }
-
-    /*if ( a_iArgs > 0 && getLastStaminaUsageTime ( Self.GetGameEntity ( )->GetID ( ).GetText ( ) ) < 20 )
-        return 0;*/
-    //std::cout << "Name: " << Self.GetName ( ) << ":\tLastUsage: " << getLastStaminaUsageTime ( Self.GetGameEntity ( )->GetID ( ).GetText ( ) ) << "\n";
-    return Hook_AddStaminaPoints.GetOriginalFunction ( &AddStaminaPoints )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
-}
-
-static mCFunctionHook Hook_StaminaUpdateOnTick;
-GEInt StaminaUpdateOnTick ( Entity p_entity ) {
-    const GEInt standardStaminaRecovery = staminaRecoveryPerTick;
-    GEInt retStaminaDelta = 0;
-
-    if ( p_entity.IsPlayer() && p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction::gEAction_Aim ) {
-        if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &p_entity , &None , 0 ) <= 7 ) {
-            p_entity.Routine.FullStop ( );
-            p_entity.Routine.SetState ( "PS_Normal" );
-            bCString aniname = p_entity.GetAni ( gEAction_AbortAttack , gEPhase::gEPhase_Begin );
-            p_entity.StartPlayAni( aniname,0,GETrue,0,GEFalse);
-        }
-        return StaminaUpdateOnTickHelper ( p_entity , -7 );
-    }
-
-    // For Now Only for player!
-    if ( p_entity == Entity::GetPlayer ( ) && (p_entity.IsSprinting ( ) || (p_entity.IsSwimming ( ) && *( BYTE* )RVA_Executable ( 0x27FD2 )) ) ) {
-        if ( p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Bloodfly ) {
-            return StaminaUpdateOnTickHelper (p_entity, -1 );
-        }
-
-        if ( eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing ) {
-            if ( p_entity.Inventory.IsSkillActive(Template("Perk_Sprinter")) 
-                || ( p_entity != Entity::GetPlayer() && getPowerLevel(p_entity ) >= 30) )
-                return StaminaUpdateOnTickHelper ( p_entity , -4 );
-            return StaminaUpdateOnTickHelper ( p_entity , -8 );
-        }
-        if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Sprinter" ) )
-           || ( p_entity != Entity::GetPlayer ( ) && getPowerLevel ( p_entity ) >= 30 ) )
-            return StaminaUpdateOnTickHelper ( p_entity , -5 );
-        return StaminaUpdateOnTickHelper ( p_entity , -10 );
-    }
-
-    if (p_entity.IsJumping() )
-        return StaminaUpdateOnTickHelper ( p_entity , 0 );
-
-    if (p_entity.NPC.IsDiseased( ) )
-        return StaminaUpdateOnTickHelper ( p_entity , 1 );
-
-    // HoldingBlockFlag 0x118ab0
-    if ( *(BYTE*)RVA_ScriptGame(0x118ab0) && eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing )
-        return StaminaUpdateOnTickHelper ( p_entity , 1 );
-    typedef GEU32(GetWeatherAdmin)( void );
-    // Get eCWeatherAdmin *! also available at RVA_ScriptGame(0x11a210)
-    GetWeatherAdmin* getWeatherAdminFunction = ( GetWeatherAdmin*)RVA_ScriptGame ( 0x12e0 );
-
-    GEU32 weatherAdmin = getWeatherAdminFunction ( );
-    // Or Temperatur
-    GEFloat weatherCondition = *( GEFloat* )( weatherAdmin + 0xd0 );
-
-    //Maybe Add more complex logic for Npcs aswell bro
-    if ( weatherCondition >= 40.0 ) {
-        if (p_entity.IsPlayer() && !p_entity.Inventory.IsSkillActive(Template("Perk_ResistHeat") ) )
-            return StaminaUpdateOnTickHelper ( p_entity , 2 );
-        return StaminaUpdateOnTickHelper ( p_entity , standardStaminaRecovery );
-    }
-
-    if ( weatherCondition <= -40.0 ) {
-        if ( p_entity.IsPlayer ( ) && !p_entity.Inventory.IsSkillActive ( Template ( "Perk_ResistCold" ) ) )
-            return StaminaUpdateOnTickHelper ( p_entity , 2 );
-        return StaminaUpdateOnTickHelper ( p_entity , standardStaminaRecovery );
-    }
-
-    return StaminaUpdateOnTickHelper ( p_entity , standardStaminaRecovery );
-}
-
-GEInt StaminaUpdateOnTickHelper (Entity& p_entity, GEInt p_staminaValue) {
-    if ( p_staminaValue > 0 && getLastStaminaUsageTime ( p_entity.GetGameEntity ( )->GetID ( ).GetText ( ) ) < staminaRecoveryDelay )
-        return 0;
-    return p_staminaValue;
-}
-
-static mCCallHook Hook_AssureProjectiles;
-void AssureProjectiles (GEInt registerBaseStack) {
-    Entity* self = (Entity*) ( registerBaseStack - 0x2A0 );
-    //std::cout << "Self: " << self->GetName() << "\n";
-    if ( *self == None ) {
-        //std::cout << "Unlucky" << "\n";
-        return;
-    }
-    GEInt random = Entity::GetRandomNumber ( 10 );
-    GEInt leftHandWeaponIndex = self->Inventory.FindStackIndex ( gESlot_LeftHand );
-    Hook_AssureProjectiles.SetImmEbx<GEInt> ( leftHandWeaponIndex );
-    gEUseType leftHandUseType = self->Inventory.GetUseType ( leftHandWeaponIndex );
-    Template projectile = getProjectile ( *self , leftHandUseType );
-    GEInt stack = self->Inventory.AssureItems ( projectile , 0 , random + 10 );
-    *(GEInt*)( registerBaseStack - 0x2C4 ) = stack;
-}
-
-static mCFunctionHook Hook_GetAttituteSummons;
-
-GEInt GetAttitudeSummons ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
-    INIT_SCRIPT_EXT ( Self , Other );
-    gCScriptAdmin& ScriptAdmin = GetScriptAdmin ( );
-
-    if ( Self.Party.GetPartyLeader() != None && Self.Party.GetPartyLeader ( ) == Other.Party.GetPartyLeader ( ) )
-        return 1;
-
-    if ( Self.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned
-        && Self.Party.GetPartyLeader ( ) != Other && Self.Party.GetPartyLeader ( ) != None ) {
-
-        if ( !(Self.Party.GetPartyLeader ( ).NPC.GetCurrentTarget ( ) == Other
-            && Self.Party.GetPartyLeader ( ).NPC.GetProperty<PSNpc::PropertyCombatState> ( ) == 1) ) {
-
-            GEInt retVal = ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Self.Party.GetPartyLeader ( ) , &Other , a_iArgs );
-            if ( retVal != 4 )
-                return 2;
-            return retVal;
-        }
-    }
-
-    if ( Other.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned
-        && Other.Party.GetPartyLeader ( ) != Self && Other.Party.GetPartyLeader ( ) != None ) {
-
-        if ( !( Other.Party.GetPartyLeader ( ).NPC.GetCurrentTarget ( ) == Self
-            && Other.Party.GetPartyLeader ( ).NPC.GetProperty<PSNpc::PropertyCombatState> ( ) == 1 ) ) {
-
-            GEInt retVal = ScriptAdmin.CallScriptFromScript ( "GetAttitude" , &Other.Party.GetPartyLeader ( ) , &Self , a_iArgs );
-            if ( retVal != 4 )
-                return 2;
-            return retVal;
-        }
-    }
-    return Hook_GetAttituteSummons.GetOriginalFunction(&GetAttitudeSummons)( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
-}
-
-void ResetAllFix() {
-    //const BYTE args[] = { 0x6A, 0x07 };
-    //const size_t argsSize = sizeof ( args ) / sizeof ( BYTE );
-    DWORD currProt , newProt;
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x24af4 ) , 0x24aff -0x24af4 , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( ( LPVOID )RVA_ScriptGame ( 0x24af4 ),0x90, 0x24aff - 0x24af4 );
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x24af4 ) , 0x24aff - 0x24af4 , currProt , &newProt );
-
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x24b2a ) , 0x24b35 - 0x24b2a , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( ( LPVOID )RVA_ScriptGame ( 0x24b2a ) , 0x90 , 0x24b35 - 0x24b2a );
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x24b2a ) , 0x24b35 - 0x24b2a , currProt , &newProt );
-}
-
-/**
-* PatchCode is for small Codefixes
-* These should be changed -- Use the G3 SDK Hookfunctions to edit ASM Code.
-*/
-void PatchCode () {
-    DWORD currProt , newProt;
-    /**
-    * 0xb5045 - 0xb503d 
-    * Call for DamageEntityTest in DoLogicalDamage removed ( not ingnorig the Immune Status anymore )
-    */
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0x90 , 0xb5045 - 0xb503d );
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb503d ) , 0xb5045 - 0xb503d , currProt , &newProt );
-
-    /**
-    * Remove the Limiter on Block for the Player via simple Bytejmp patch
-    */
-    BYTE patchcode[] = {0xE9,0x2B,0x02,0x00,0x00};
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x63365 - 0x63359 , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x90 , 0x63365 - 0x63359 );
-    memcpy ( ( LPVOID )RVA_ScriptGame ( 0x6335f ) , patchcode, sizeof(patchcode)/sizeof(BYTE));
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x63365 - 0x63359 , currProt , &newProt );
-
-    /**
-    * Change the Protection Multiplier for NPCs to npcArmorMultiplier (1.2)
-    * 
-    */
-    //std::cout << "Adr adress: " << npcArmorMultiplierPtr << "\tFloat: " << npcArmorMultiplier << "\n";
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x34656 ) , 0x3465a - 0x34656 , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( ( LPVOID )RVA_ScriptGame ( 0x34656 ) , 0x90 , 0x3465a - 0x34656 );
-    memcpy ( ( LPVOID )RVA_ScriptGame ( 0x34656 ) , &npcArmorMultiplierPtr , sizeof ( &npcArmorMultiplierPtr ) );
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x34656 ) , 0x3465a - 0x34656 , currProt , &newProt );
-
-    /** Remove HitProt when Entity is SitDowned
-    * 0xb51c0 - 0xb51b1
-    * Is gEAnimationState Knockdown? 
-    */ 
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0x90 , 0xb51c0 - 0xb51b1 );
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , currProt , &newProt );
-
-    /**
-    * Remove the Targetlimitation of Pierce- and Hack-Attacks on the Currentarget
-    * 0xb51db - 0xb51cd
-    */
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51cd ) , 0xb51dc - 0xb51cd , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( ( LPVOID )RVA_ScriptGame ( 0xb51cd ) , 0x90 , 0xb51d0 - 0xb51cd ); // Remove Compare for Hackattack
-    memset ( ( LPVOID )RVA_ScriptGame ( 0xb51d6 ) , 0x90 , 0xb51db - 0xb51d6 ); // Remove Jump for Hackattack and PierceAttack Compare
-    memset ( ( LPVOID )RVA_ScriptGame ( 0xb51db ) , 0xEB , 1 ); // JMP always
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51cd ) , 0xb51dc - 0xb51cd , currProt , &newProt );
-    /*
-    //0xac2e6
-    // Test Quality Worn
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xac2e6 ) , 0xac2ec - 0xac2e6 , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( ( LPVOID )RVA_ScriptGame ( 0xac2e6 ) , 0x90 , 0xac2ec - 0xac2e6 );
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xac2e6 ) , 0xac2ec - 0xac2e6 , currProt , &newProt );*/
-}
-
-static mCFunctionHook Hook_CanBurn;
-static mCFunctionHook Hook_CanFreeze;
 /**
 * Addition to the CanFreeze for new Spell! 
 * Always return true on IceBlock spell
 */ 
-GEInt CanFreezeAddition ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
-    // Fix for new Spell
-    if ( a_pOtherEntity->GetName ( ) == "Mis_IceBlock" )
-        return GETrue;
-    return Hook_CanFreeze.GetOriginalFunction ( &CanFreezeAddition )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
-}
-
-GEInt IsEvil ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
-    INIT_SCRIPT_EXT ( Self , Other );
-    if ( GetScriptAdmin ( ).CallScriptFromScript ( "IsUndead" , &Self , &None , 0 ) )
-        return 1;
-    switch ( Self.NPC.GetProperty<PSNpc::PropertySpecies> ( ) ) {
-    case gESpecies_Golem:
-    case gESpecies_Demon:
-    case gESpecies_Gargoyle:
-    case gESpecies_FireGolem:
-    case gESpecies_IceGolem:
-    case gESpecies_ScorpionKing:
-    // New Check for Dragon!
-    case gESpecies_Dragon:
-        return 1;
-    default:
-        return 0;
-    }
-    //return 0;
-}
 
 static mCCallHook Hook_GiveXPPowerlevel;
-
 void GiveXPPowerlevel ( gCNPC_PS* p_npc ) {
     Entity entity = p_npc->GetEntity ( );
     GEInt powerLevel = getPowerLevel ( entity );
     Hook_GiveXPPowerlevel.SetImmEax ( powerLevel );
 }
 
-/*static mCFunctionHook Hook_Shoot;
-
-GEInt Shoot ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
-    INIT_SCRIPT_EXT ( Self , Other );
-    if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &Self , &None , 0 ) <= 1 ) {
-        Self.Routine.FullStop ( );
-        Self.Routine.SetState ( "PS_Normal" );
-        std::cout << "BRUCCHCHHSAHCHACHHC " << GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &Self , &None , 0 ) << "\n";
-        bCString aniname = Self.GetAni ( gEAction_AbortAttack , gEPhase::gEPhase_Begin );
-        Self.StartPlayAni ( aniname , 0 , GETrue , 0 , GEFalse );
-        return 0;
+void AddNewEffect ( ) {
+    //EffectModulePtr
+    DWORD EffectModulePtr = ( ( DWORD ( * )( void ) )( RVA_Game ( 0x601f0 ) ) ) ( );
+    //std::cout << "EffectModule Pointer: " << EffectModulePtr << "\n";
+    if ( EffectModulePtr == 0 )
+        return;
+    DWORD gCEffectSystemPtr = EffectModulePtr + 0x14;
+    if ( gCEffectSystemPtr == 0 )
+        return;
+    gCEffectMap* EffectMap = ( gCEffectMap* )( *( DWORD* )gCEffectSystemPtr + 0x4 );
+    if ( EffectMap == nullptr )
+        return;
+    gCEffectMap NewEM;
+    NewEM.Load ( "g3-new.efm" );
+    for ( auto iter = NewEM.Begin ( ); iter != NewEM.End ( ); iter++ ) {
+        //std::cout << "EffectName: " << iter.GetKey ( ) << "\n";
+        EffectMap->RemoveAt ( iter.GetKey ( ) );
+        gCEffectCommandSequence* effectCommand = EffectMap->InsertNewAt ( iter.GetKey ( ) );
+        *effectCommand = iter.GetNode ( )->m_Element;
     }
-    return Hook_Shoot.GetOriginalFunction ( &Shoot )( a_pSPU , a_pSelfEntity, a_pOtherEntity, a_iArgs );
-}*/
+    //std::cout << "EffectMap Merged " << "\n";
+}
 
 extern "C" __declspec( dllexport )
 gSScriptInit const * GE_STDCALL ScriptInit( void )
 {
     // Ensure that that Script_Game.dll is loaded.
-    GetScriptAdmin().LoadScriptDLL("Script_Game.dll");
-
+    GetScriptAdmin ( ).LoadScriptDLL ( "Script_Game.dll" );
     LoadSettings ( );
-    ResetAllFix ( );
     PatchCode ( );
-    PatchCode1 ( );
+    AddNewEffect ( );
  
     // If G3Fixes is installed use them
-    GetScriptAdmin().LoadScriptDLL("Script_G3Fixes.dll");
-    if ( !GetScriptAdmin ( ).IsScriptDLLLoaded ( "Script_G3Fixes.dll" ) || useNewBalanceMagicWeapon ) {
-        Hook_CanBurn.Hook ( GetScriptAdminExt ( ).GetScript ( "CanBurn" )->m_funcScript , &CanBurn , mCBaseHook::mEHookType_OnlyStack );
-        Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript, &CanFreeze , mCBaseHook::mEHookType_OnlyStack );
-    }
-    else {
-        Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript , &CanFreezeAddition , mCBaseHook::mEHookType_OnlyStack );
-    }
-
-    if ( useNewStaminaRecovery ) {
-        Hook_AddStaminaPoints.Hook ( GetScriptAdminExt ( ).GetScript ( "AddStaminaPoints" )->m_funcScript , &AddStaminaPoints );
-
-        Hook_StaminaUpdateOnTick
-            .Prepare ( RVA_ScriptGame ( 0xb0520 ) , &StaminaUpdateOnTick , mCBaseHook::mEHookType_OnlyStack )
-            .Hook ( );
-    }
-    
-    static mCFunctionHook Hook_Assesshit;
-    static mCFunctionHook Hook_IsEvil;
-    static mCFunctionHook Hook_GetAnimationSpeedModifier;
-    static mCFunctionHook Hook_OnPowerAim_Loop;
-    static mCFunctionHook Hook_CanParade;
-    static mCFunctionHook Hook_UpdateHitPointsOnTick;
 
     HookFunctions ( );
-
-    Hook_UpdateHitPointsOnTick
-        .Prepare ( RVA_ScriptGame ( 0xb0360 ) , &UpdateHitPointsOnTick )
-        .Hook ( );
-
-    GetScriptAdmin ( ).LoadScriptDLL ( "Script_OptionalGuard.dll" );
-    if ( !GetScriptAdmin ( ).IsScriptDLLLoaded ( "Script_OptionalGuard.dll" ) ) {
-        Hook_CanParade
-            .Prepare ( RVA_ScriptGame ( 0xd480 ) , &CanParade , mCBaseHook::mEHookType_OnlyStack )
-            .Hook ( );
-    }
-
-    Hook_GetAnimationSpeedModifier
-        .Prepare ( RVA_ScriptGame ( 0x42a0 ) , &GetAnimationSpeedModifier )
-        .Hook ( );
-
-    Hook_OnPowerAim_Loop
-        .Prepare ( RVA_ScriptGame ( 0x84b90 ), &OnPowerAim_Loop )
-        .Hook ( );
 
     Hook_CombatMoveScale
         .Prepare ( RVA_Game ( 0x16b8a3 ) , &CombatMoveScale, mCBaseHook::mEHookType_Mixed, mCRegisterBase::mERegisterType_Ecx )
@@ -1329,28 +1065,47 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     //    .Prepare ( RVA_ScriptGame ( 0x86450 ) , &Shoot )
     //    .Hook ( );
 
-    Hook_Shoot_Velocity
-        .Prepare ( RVA_ScriptGame ( 0x86882 ) , &Shoot_Velocity )
-        .InsertCall ( )
-        .AddPtrStackArgEbp ( 0x8 )
-        .AddPtrStackArgEbp ( 0xC )
-        .AddPtrStackArgEbp ( 0x10 )
-        .AddStackArg(0xB8)
-        .RestoreRegister ( )
-        .Hook ( );
+    if ( useNewBowMechanics ) {
+        Hook_Shoot_Velocity
+            .Prepare ( RVA_ScriptGame ( 0x86882 ) , &Shoot_Velocity )
+            .InsertCall ( )
+            .AddPtrStackArgEbp ( 0x8 )
+            .AddPtrStackArgEbp ( 0xC )
+            .AddPtrStackArgEbp ( 0x10 )
+            .AddStackArg ( 0xB8 )
+            .RestoreRegister ( )
+            .Hook ( );
 
-    Hook_GiveXPPowerlevel
-        .Prepare ( RVA_ScriptGame ( 0x4e451 ) , &GiveXPPowerlevel , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Eax )
-        .InsertCall ( )
-        .AddPtrStackArg( 0x11c )
-        .ReplaceSize ( 0x4e45a - 0x4e451 )
-        .RestoreRegister ( )
-        .Hook ( );
+        Hook_PS_Ranged_PowerAim
+            .Prepare ( RVA_ScriptGame ( 0x84940 ) , &PS_Ranged_PowerAim )
+            .InsertCall ( )
+            .AddPtrStackArgEbp ( 0x8 )
+            .AddPtrStackArgEbp ( 0xC )
+            .AddStackArg ( 0 )
+            .RestoreRegister ( )
+            .Hook ( );
 
-    Hook_GetAttituteSummons.Hook( GetScriptAdminExt ( ).GetScript ( "GetAttitude" )->m_funcScript , &GetAttitudeSummons );
+        Hook_ZS_Ranged_PowerAim
+            .Prepare ( RVA_ScriptGame ( 0x195f6 ) , &ZS_Ranged_PowerAim )
+            .InsertCall ( )
+            .AddPtrStackArgEbp ( 0x8 )
+            .AddPtrStackArgEbp ( 0xC )
+            .AddStackArg ( 0 )
+            .RestoreRegister ( )
+            .Hook ( );
+    }
 
-    Hook_IsEvil.Hook ( GetScriptAdminExt ( ).GetScript ( "IsEvil" )->m_funcScript , &IsEvil );
+    if ( adjustXPReceive ) {
+        Hook_GiveXPPowerlevel
+            .Prepare ( RVA_ScriptGame ( 0x4e451 ) , &GiveXPPowerlevel , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Eax )
+            .InsertCall ( )
+            .AddPtrStackArg ( 0x11c )
+            .ReplaceSize ( 0x4e45a - 0x4e451 )
+            .RestoreRegister ( )
+            .Hook ( );
+    }
 
+    static mCFunctionHook Hook_Assesshit;
     Hook_Assesshit.Hook ( GetScriptAdminExt ( ).GetScript ( "AssessHit" )->m_funcScript , &AssessHit , mCBaseHook::mEHookType_OnlyStack );
 
     Hook_AssureProjectiles
@@ -1373,8 +1128,8 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD dwReason, LPVOID )
     switch( dwReason )
     {
     case DLL_PROCESS_ATTACH:
-        AllocConsole ( );
-        freopen_s ( ( FILE** )stdout , "CONOUT$" , "w" , stdout );
+        //AllocConsole ( );
+        //freopen_s ( ( FILE** )stdout , "CONOUT$" , "w" , stdout );
         ::DisableThreadLibraryCalls( hModule );
         break;
     case DLL_PROCESS_DETACH:
