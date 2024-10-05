@@ -46,7 +46,7 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 		multiPlier *= 0.9;
 
 	if ( isArenaNPC )
-		multiPlier *= 1.1; // default 1.25
+		multiPlier *= npcArenaSpeedMultiplier; // default 1.25
 	switch ( action ) {
 	case gEAction_FinishingAttack:
 	case gEAction_SitKnockDown:
@@ -224,7 +224,6 @@ GEInt OnPowerAim_Loop ( gCScriptProcessingUnit* p_PSU ) {
 	return 1;
 }
 
-
 static std::map<bCString , GEU32> LastHealthDamageMap = {};
 static std::map<bCString , GEU32> LastStaminaUsageMap = {};
 static GEInt healthRecoveryDelay = 60;
@@ -395,10 +394,12 @@ GEInt GE_STDCALL CanParade ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEnt
 static mCFunctionHook Hook_OnTick;
 GEInt GE_STDCALL OnTick ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs ) {
 	INIT_SCRIPT_EXT ( Self , Other );
-	if ( !Self.IsPlayer ( ) && /*Self.NPC.GetProperty<PSNpc::PropertySpecies> ( ) != gESpecies::gESpecies_Zombie
-		&&*/ Self.Routine.GetProperty<PSRoutine::PropertyAIMode> ( ) == gEAIMode_Combat ) {
-		GEFloat staminaPercantage = Self.DamageReceiver.GetProperty<PSDamageReceiver::PropertyStaminaPoints> ( ) / Self.DamageReceiver.GetProperty<PSDamageReceiver::PropertyStaminaPointsMax> ( );
-		if ( Self.GetDistanceTo ( Self.NPC.GetCurrentTarget ( ) ) > 450.0 /* && staminaPercantage >= 0.2*/ )
+
+	if ( !Self.IsPlayer ( ) && enableNPCSprint
+		&& ( Self.NPC.GetProperty<PSNpc::PropertySpecies> ( ) != gESpecies::gESpecies_Zombie || zombiesCanSprint ) 
+		&& Self.Routine.GetProperty<PSRoutine::PropertyAIMode> ( ) == gEAIMode_Combat ) {
+		GEDouble staminaPercantage = ( GEDouble ) Self.DamageReceiver.GetProperty<PSDamageReceiver::PropertyStaminaPoints> ( ) / ( GEDouble ) Self.DamageReceiver.GetProperty<PSDamageReceiver::PropertyStaminaPointsMax> ( );
+		if ( Self.GetDistanceTo ( Self.NPC.GetCurrentTarget ( ) ) > 450.0 && staminaPercantage >= 0.2 )
 			Self.SetMovementMode ( gECharMovementMode_Sprint );
 		else
 			;//Self.SetMovementMode ( gECharMovementMode_Run );
@@ -726,7 +727,6 @@ GEInt GE_STDCALL GetMaxLevel ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfE
 	return level;
 }
 
-
 GEInt StaminaUpdateOnTickHelper ( Entity& p_entity , GEInt p_staminaValue ) {
 	if ( p_staminaValue > 0 && getLastTimeFromMap ( p_entity.GetGameEntity ( )->GetID ( ).GetText ( ) , LastStaminaUsageMap ) < staminaRecoveryDelay )
 		return 0;
@@ -951,8 +951,6 @@ void HookFunctions ( ) {
 	Hook_OnTick
 		.Prepare ( RVA_ScriptGame ( 0xb0ef0 ), &OnTick )
 		.Hook ( );
-
-	Hook_MagicTransform.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicTransform" )->m_funcScript, &MagicTransform , mCBaseHook::mEHookType_OnlyStack );
 	
 	static mCFunctionHook Hook_CanParade;
 	GetScriptAdmin ( ).LoadScriptDLL ( "Script_OptionalGuard.dll" );
@@ -975,9 +973,13 @@ void HookFunctions ( ) {
 		.Prepare ( RVA_ScriptGame ( 0xb200 ) , &speciesRightHand )
 		.Hook ( );
 
-	Hook_StartTransform
-		.Prepare ( RVA_Script ( 0x1afe0 ) , &StartTransform , mCBaseHook::mEHookType_ThisCall )
-		.Hook ( );
+	if ( enableNewTransformation ) {
+		Hook_MagicTransform.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicTransform" )->m_funcScript , &MagicTransform , mCBaseHook::mEHookType_OnlyStack );
+
+		Hook_StartTransform
+			.Prepare ( RVA_Script ( 0x1afe0 ) , &StartTransform , mCBaseHook::mEHookType_ThisCall )
+			.Hook ( );
+	}
 
 	Hook_MagicSleep.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSleep" )->m_funcScript , &MagicSleep );
 

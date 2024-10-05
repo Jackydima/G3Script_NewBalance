@@ -37,6 +37,7 @@ void LoadSettings ( ) {
         playerOnlyPerfectBlock = config.GetBool ( "Script" , "PlayerOnlyPerfectBlock" , playerOnlyPerfectBlock );
         useNewBalanceMeleeScaling = config.GetBool ( "Script" , "NewMeleeScaling" , useNewBalanceMeleeScaling );
         adjustXPReceive = config.GetBool ( "Script" , "AdjustXPReceive" , adjustXPReceive );
+        poiseThreshold = config.GetInt ( "Script" , "PoiseThreshold" , poiseThreshold );
         staminaRecoveryDelay = config.GetU32 ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
         staminaRecoveryPerTick = config.GetU32 ( "Script" , "StaminaRecoveryPerTick" , staminaRecoveryPerTick );
         npcArmorMultiplier = config.GetFloat( "Script" , "NPCProtectionMultiplier" , npcArmorMultiplier );
@@ -53,7 +54,14 @@ void LoadSettings ( ) {
         useSharpPercentage = config.GetBool ( "Script" , "UseSharpPercentage" , useSharpPercentage );
         forgedBonus = config.GetU32 ( "Script" , "ForgedBonus" , forgedBonus );
         wornPercentageMalus = config.GetU32 ( "Script" , "WornMalus" , wornPercentageMalus );
+        npcArenaSpeedMultiplier = config.GetFloat ( "Script" , "NPCArenaSpeedMultiplier" , npcArenaSpeedMultiplier );
+        enableNPCSprint = config.GetBool ( "Script" , "EnableNPCSprint" , enableNPCSprint );
+        zombiesCanSprint = config.GetBool ( "Script" , "ZombiesCanSprint" , zombiesCanSprint );
+        enableNewTransformation = config.GetBool ( "Script" , "EnableNewTransformation" , enableNewTransformation );
     }
+
+    CFFGFCWnd* test = CFFGFCWnd ( ).GetDesktopWindow();
+    CFFGFCView view = CFFGFCView ( 20386 , test );
 }
 
 static GEU32 getPerfectBlockLastTime ( bCString iD ) {
@@ -228,7 +236,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         HitForce = static_cast< gEHitForce >(HitForce - getMonsterHyperArmorPoints(Victim, VictimAction));
         //std::cout << "HitForce after Monster: " << HitForce << "\n";
 
-        if ((GEInt)HitForce <= -1)
+        if ((GEInt)HitForce <= poiseThreshold )
         {
             HitForce = gEHitForce_Minimal;
         }

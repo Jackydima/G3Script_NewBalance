@@ -39,6 +39,7 @@
     <ClCompile Include="..\..\Shared\util\Util.cpp">
       <Filter>util</Filter>
     </ClCompile>
+    <ClCompile Include="SharedConfig.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Shared\gui\ge_hudstaticnpc.h">

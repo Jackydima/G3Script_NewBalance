@@ -69,6 +69,7 @@
     <ClCompile Include="CodePatch.cpp" />
     <ClCompile Include="FunctionHook.cpp" />
     <ClCompile Include="ge_DamageReceiver_ext.cpp" />
+    <ClCompile Include="SharedConfig.cpp" />
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="Script_NewBalance.cpp" />
   </ItemGroup>

@@ -5,37 +5,43 @@
 
 
 //TODO 
-static GEFloat npcSTRMultiplier = 1.5;
-static GEInt npcSTRAddition = 15;
+extern GEFloat npcSTRMultiplier;
+extern GEInt npcSTRAddition;
 //
 // 
 // Configureable
-static GEBool useNewBalanceMagicWeapon = GEFalse;
-static GEBool useNewStaminaRecovery = GETrue;
-static GEBool useAlwaysMaxLevel = GETrue;
-static GEBool enablePerfectBlock = GETrue;
-static GEBool playerOnlyPerfectBlock = GEFalse;
-static GEBool useNewBalanceMeleeScaling = GETrue;
-static GEBool adjustXPReceive = GETrue;
-static GEBool useNewBowMechanics = GETrue;
 
-static GEFloat npcWeaponDamageMultiplier = 0.15;
-static GEU32 staminaRecoveryDelay = 20;
-static GEU32 staminaRecoveryPerTick = 13;
-static GEFloat fMonsterDamageMultiplicator = 0.5; // Default 0.5
-static GEDouble npcArmorMultiplier = 1.5;
-static GEDouble playerArmorMultiplier = 0.4;
-static GEU32 startSTR = 100;
-static GEU32 startDEX = 100;
-static GEDouble shootVelocity = 300;
-static GEDouble NPC_AIM_INACCURACY = 0.40;
-static GEDouble ATTACK_REACH_MULTIPLIER = 1.75;
+extern GEBool useNewBalanceMagicWeapon;
+extern GEBool useNewStaminaRecovery;
+extern GEBool useAlwaysMaxLevel;
+extern GEBool enablePerfectBlock;
+extern GEBool playerOnlyPerfectBlock;
+extern GEBool useNewBalanceMeleeScaling;
+extern GEBool adjustXPReceive;
+extern GEBool useNewBowMechanics;
+extern GEBool enableNPCSprint;
+extern GEBool zombiesCanSprint;
+extern GEBool enableNewTransformation;
 
-static GEU32 blessedBonus = 10;
-static GEU32 sharpBonus = 10;
-static GEBool useSharpPercentage = GETrue;
-static GEU32 forgedBonus = 20;
-static GEU32 wornPercentageMalus = 70;
+extern GEInt poiseThreshold;
+extern GEFloat npcArenaSpeedMultiplier;
+extern GEFloat npcWeaponDamageMultiplier;
+extern GEU32 staminaRecoveryDelay;
+extern GEU32 staminaRecoveryPerTick;
+extern GEFloat fMonsterDamageMultiplicator; // Default 0.5
+extern GEDouble npcArmorMultiplier;
+extern GEDouble playerArmorMultiplier;
+extern GEU32 startSTR;
+extern GEU32 startDEX;
+extern GEDouble shootVelocity;
+extern GEDouble NPC_AIM_INACCURACY;
+extern GEDouble ATTACK_REACH_MULTIPLIER;
+
+extern GEU32 blessedBonus;
+extern GEU32 sharpBonus;
+extern GEBool useSharpPercentage;
+extern GEU32 forgedBonus;
+extern GEU32 wornPercentageMalus;
 
 //
 // 
