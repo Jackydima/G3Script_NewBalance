@@ -13,6 +13,7 @@ extern GEInt npcSTRAddition;
 
 //NPC Level for Powergroup
 extern GEU32 bossLevel;
+extern GEU32 uniqueLevel;
 extern GEU32 eliteLevel;
 extern GEU32 warriorLevel;
 extern GEU32 noviceLevel;

@@ -29,7 +29,7 @@ Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
     Template projectile = Template ( "Arrow" );
 
     if ( p_rangedWeaponType == gEUseType_CrossBow ) {
-        if ( powerLevel >= 25 ) {
+        if ( powerLevel >= warriorLevel ) {
             projectile = Template("Bolt_Sharp");
             if ( projectile.IsValid ( ) ) {
                 return projectile;
@@ -50,7 +50,7 @@ Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
         else if ( alignment == gEPoliticalAlignment_Nrd ) {
             projectile = Template ( "SharpArrow" );
         }
-        else if ( powerLevel >= 30 ) {
+        else if ( powerLevel >= warriorLevel ) {
             if ( alignment == gEPoliticalAlignment_Orc ) {
                 if ( random <= 20 ) {
                     projectile = Template ( "SharpArrow" );
@@ -173,7 +173,7 @@ GEInt CanBurn ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity*
         DamagerOwner = p_damager;
     }
     if ( ( p_victim == Entity::GetPlayer ( ) && p_victim.Inventory.IsSkillActive ( Template ( "Perk_ResistHeat" ) ) )
-        || ( p_victim != Entity::GetPlayer ( ) && getPowerLevel ( p_victim ) >= 40 ) )
+        || ( p_victim != Entity::GetPlayer ( ) && getPowerLevel ( p_victim ) >= eliteLevel ) )
         random = static_cast< GEInt >( random * 2 );
     // Special Resistance :O
     if ( random >= 100 ) {
@@ -234,7 +234,7 @@ GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entit
         DamagerOwner = p_damager;
     }
     if ( (p_victim == Entity::GetPlayer ( ) && p_victim.Inventory.IsSkillActive ( Template ( "Perk_ResistCold" ) ) )
-        || (p_victim != Entity::GetPlayer() && getPowerLevel(p_victim) >= 40 ) )
+        || (p_victim != Entity::GetPlayer() && getPowerLevel(p_victim) >= eliteLevel ) )
         random = static_cast<GEInt>(random * 2.0);
     // Special Resistance :O
     if ( random >= 100 ) {
@@ -301,15 +301,17 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     if ( p_entity != Entity::GetPlayer ( ) ) {
         GEU32 npcLevel = getPowerLevel(p_entity);
         //std::cout << "Entity: " << p_entity.GetName ( ) << "\tLevel: " << npcLevel << std::endl;
-        if ( npcLevel >= bossLevel ) // 70
-            return 5;
-        if ( npcLevel >= eliteLevel ) // 50
-            return 4;
-        if ( npcLevel >= warriorLevel ) // 35
-            return 2;
-        if ( npcLevel > noviceLevel ) // >20
+        if ( npcLevel <= noviceLevel ) // 20
+            return 0;
+        if ( npcLevel <= warriorLevel ) // 30
             return 1;
-        return 0;
+        if ( npcLevel <= eliteLevel ) // 35
+            return 2;
+        if ( npcLevel <= uniqueLevel ) // 45
+            return 3;
+        if ( npcLevel <= bossLevel ) // >65
+            return 4;
+        return 5;
     }
 
     GEInt level = 0;
@@ -414,7 +416,7 @@ GEInt GetShieldLevelBonusNB ( Entity& p_entity ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Shield_2" ) ) )
                 level += 1;
         }
-        else if ( getPowerLevel ( p_entity ) > 34 )
+        else if ( getPowerLevel ( p_entity ) >= eliteLevel )
             level += 1;
     }
     return level;
@@ -548,8 +550,6 @@ GEU32 GetPoisonDamage ( Entity& attacker ) {
     if ( attacker.IsPlayer ( ) ) {
         GEInt thf = attacker.PlayerMemory.GetTheft ( );
         poisonDamage = static_cast<GEInt>(thf * 0.1) + 3;
-        if ( poisonDamage < 3 )
-            poisonDamage = 3;
         return poisonDamage;
     }
 
@@ -595,11 +595,11 @@ GEInt getWeaponLevelNB ( Entity& p_entity ) {
     }
     //NPC here
     GEInt powerLevel = getPowerLevel ( p_entity );
-    if ( powerLevel > 49 )
+    if ( powerLevel > eliteLevel )
         return 3;
-    if ( powerLevel > 34 )
+    if ( powerLevel > warriorLevel )
         return 2;
-    if ( powerLevel > 20 )
+    if ( powerLevel > noviceLevel )
         return 1;
     return 0;
 }
@@ -755,9 +755,9 @@ WarriorType GetWarriorType ( Entity& p_entity ) {
         return WarriorType_None;
     }
     GEInt powerLevel = getPowerLevel ( p_entity );
-    if ( powerLevel >= 40 )
+    if ( powerLevel >= uniqueLevel )
         return WarriorType_Elite;
-    if ( powerLevel >= 30 )
+    if ( powerLevel >= warriorLevel )
         return WarriorType_Warrior;
     return WarriorType_Novice;
 }

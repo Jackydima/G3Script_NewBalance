@@ -9,9 +9,10 @@ GEInt npcSTRAddition = 15;
 // 
 // Configureable
 
-GEU32 bossLevel = 70;
-GEU32 eliteLevel = 50;
-GEU32 warriorLevel = 35;
+GEU32 bossLevel = 65;
+GEU32 uniqueLevel = 45;
+GEU32 eliteLevel = 35;
+GEU32 warriorLevel = 30;
 GEU32 noviceLevel = 20;
 
 GEBool useNewBalanceMagicWeapon = GEFalse;

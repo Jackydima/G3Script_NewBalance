@@ -59,6 +59,11 @@ void LoadSettings ( ) {
         zombiesCanSprint = config.GetBool ( "Script" , "ZombiesCanSprint" , zombiesCanSprint );
         enableNewTransformation = config.GetBool ( "Script" , "EnableNewTransformation" , enableNewTransformation );
         disableMonsterRage = config.GetBool ( "Script" , "DisableMonsterRage" , disableMonsterRage );
+        bossLevel = config.GetU32 ( "Script" , "BossLevelCap" , bossLevel );
+        uniqueLevel = config.GetU32 ( "Script" , "UniqueLevelCap" , uniqueLevel );
+        eliteLevel = config.GetU32 ( "Script" , "EliteLevelCap" , eliteLevel );
+        warriorLevel = config.GetU32 ( "Script" , "WarriorLevelCap" , warriorLevel );
+        noviceLevel = config.GetU32 ( "Script" , "NoviceLevelCap" , noviceLevel );
     }
 
     CFFGFCWnd* test = CFFGFCWnd ( ).GetDesktopWindow();
@@ -285,7 +290,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             if ( IsMagicProjectileNB ( Damager ) )
             {
                 FinalDamage *= 2;
-
             }
             
             // PropertyManaUsed depends on cast phase
