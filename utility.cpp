@@ -12,12 +12,12 @@ gEWeaponCategory GetHeldWeaponCategoryNB ( Entity const& a_Entity )
 
 GEInt getPowerLevel ( Entity& p_entity ) {
     Entity player = Entity::GetPlayer ( );
-    GEInt level = p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) + player.NPC.GetProperty<PSNpc::PropertyLevel> ( );
-    if ( level > p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) )
-        level = p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( );
+    GEInt level = static_cast<GEInt>(p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) + player.NPC.GetProperty<PSNpc::PropertyLevel> ( ));
+    if ( level > static_cast<GEInt>( p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( )) )
+        level = static_cast<GEInt>( p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( ));
     //std::cout << "PowerLevel of: " << p_entity.GetName ( ) << ":\t" << level << "\n";
     if ( useAlwaysMaxLevel )
-        level = p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( );
+        level = static_cast< GEInt >( p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( ));
     return level;
 }
 
@@ -26,7 +26,7 @@ Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
     gEPoliticalAlignment alignment = p_entity.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( );
     gESpecies targetSpecies = p_entity.NPC.GetCurrentTarget ( ).NPC.GetProperty<PSNpc::PropertySpecies> ( );
     GEInt random = Entity::GetRandomNumber ( 100 );
-    Template projectile;
+    Template projectile = Template ( "Arrow" );
 
     if ( p_rangedWeaponType == gEUseType_CrossBow ) {
         if ( powerLevel >= 25 ) {
@@ -66,10 +66,12 @@ Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
                 projectile = Template ( "FireArrow" );
             }
         }
-        if ( projectile.IsValid() )
+        if ( projectile.IsValid ( ) ) {
             return projectile;
+        }
         return Template ("Arrow");
     }
+    return projectile;
 }
 
 GEInt getMonsterHyperArmorPoints ( Entity& p_monster , gEAction p_monsterAction ) {
@@ -128,6 +130,7 @@ GEBool isBigMonster ( Entity& p_monster ) {
 
 GEInt IsEvil ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
     INIT_SCRIPT_EXT ( Self , Other );
+    UNREFERENCED_PARAMETER ( a_iArgs );
     if ( GetScriptAdmin ( ).CallScriptFromScript ( "IsUndead" , &Self , &None , 0 ) )
         return 1;
     switch ( Self.NPC.GetProperty<PSNpc::PropertySpecies> ( ) ) {
@@ -149,6 +152,7 @@ GEInt IsEvil ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* 
 GEInt CanBurn ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
 
     INIT_SCRIPT_EXT ( p_victim , p_damager );
+    UNREFERENCED_PARAMETER ( a_iArgs );
     if ( p_damager == None ) return GEFalse;
     gESpecies victimSpecies = p_victim.NPC.GetProperty<PSNpc::PropertySpecies> ( );
     switch ( victimSpecies ) {
@@ -206,6 +210,7 @@ GEInt CanBurn ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity*
 GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
 
     INIT_SCRIPT_EXT ( p_victim , p_damager );
+    UNREFERENCED_PARAMETER ( a_iArgs );
     if ( p_damager == None ) return GEFalse;
     if ( p_damager.GetName ( ) == "Mis_IceBlock" )
         return GETrue;
@@ -296,13 +301,13 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     if ( p_entity != Entity::GetPlayer ( ) ) {
         GEU32 npcLevel = getPowerLevel(p_entity);
         //std::cout << "Entity: " << p_entity.GetName ( ) << "\tLevel: " << npcLevel << std::endl;
-        if ( npcLevel > 69 )
+        if ( npcLevel >= bossLevel ) // 70
             return 5;
-        if ( npcLevel > 49 )
+        if ( npcLevel >= eliteLevel ) // 50
             return 4;
-        if ( npcLevel > 34 )
+        if ( npcLevel >= warriorLevel ) // 35
             return 2;
-        if ( npcLevel > 20 )
+        if ( npcLevel > noviceLevel ) // >20
             return 1;
         return 0;
     }

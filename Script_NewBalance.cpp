@@ -85,6 +85,7 @@ static GEU32 getPerfectBlockLastTime ( bCString iD ) {
 gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs )
 {
     INIT_SCRIPT_EXT ( Victim , Damager );
+    UNREFERENCED_PARAMETER ( a_iArgs );
 
     gCScriptAdmin& ScriptAdmin = GetScriptAdmin ( );
     GEU32 lastHit = getPerfectBlockLastTime ( Victim.GetGameEntity ( )->GetID ( ).GetText ( ) );
@@ -1012,18 +1013,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     return gEAction_Stumble;
 }
 
-/**
-* Addition to the CanFreeze for new Spell! 
-* Always return true on IceBlock spell
-*/ 
-
-static mCCallHook Hook_GiveXPPowerlevel;
-void GiveXPPowerlevel ( gCNPC_PS* p_npc ) {
-    Entity entity = p_npc->GetEntity ( );
-    GEInt powerLevel = getPowerLevel ( entity );
-    Hook_GiveXPPowerlevel.SetImmEax ( powerLevel );
-}
-
 void AddNewEffect ( ) {
     //EffectModulePtr
     DWORD EffectModulePtr = ( ( DWORD ( * )( void ) )( RVA_Game ( 0x601f0 ) ) ) ( );
@@ -1055,74 +1044,16 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     LoadSettings ( );
     PatchCode ( );
     AddNewEffect ( );
- 
-    // If G3Fixes is installed use them
 
     HookFunctions ( );
-
-    Hook_CombatMoveScale
-        .Prepare ( RVA_Game ( 0x16b8a3 ) , &CombatMoveScale, mCBaseHook::mEHookType_Mixed, mCRegisterBase::mERegisterType_Ecx )
-        .InsertCall ( )
-        .AddPtrStackArgEbp ( 0x8 )
-        .AddPtrStackArgEbp ( 0xC )
-        .AddRegArg ( mCRegisterBase::mERegisterType_Ecx )
-        .RestoreRegister ( )
-        .Hook ( );
+    HookCallHooks ( ); 
 
     //Hook_Shoot  
     //    .Prepare ( RVA_ScriptGame ( 0x86450 ) , &Shoot )
     //    .Hook ( );
 
-    if ( useNewBowMechanics ) {
-        Hook_Shoot_Velocity
-            .Prepare ( RVA_ScriptGame ( 0x86882 ) , &Shoot_Velocity )
-            .InsertCall ( )
-            .AddPtrStackArgEbp ( 0x8 )
-            .AddPtrStackArgEbp ( 0xC )
-            .AddPtrStackArgEbp ( 0x10 )
-            .AddStackArg ( 0xB8 )
-            .RestoreRegister ( )
-            .Hook ( );
-
-        Hook_PS_Ranged_PowerAim
-            .Prepare ( RVA_ScriptGame ( 0x84940 ) , &PS_Ranged_PowerAim )
-            .InsertCall ( )
-            .AddPtrStackArgEbp ( 0x8 )
-            .AddPtrStackArgEbp ( 0xC )
-            .AddStackArg ( 0 )
-            .RestoreRegister ( )
-            .Hook ( );
-
-        Hook_ZS_Ranged_PowerAim
-            .Prepare ( RVA_ScriptGame ( 0x195f6 ) , &ZS_Ranged_PowerAim )
-            .InsertCall ( )
-            .AddPtrStackArgEbp ( 0x8 )
-            .AddPtrStackArgEbp ( 0xC )
-            .AddStackArg ( 0 )
-            .RestoreRegister ( )
-            .Hook ( );
-    }
-
-    if ( adjustXPReceive ) {
-        Hook_GiveXPPowerlevel
-            .Prepare ( RVA_ScriptGame ( 0x4e451 ) , &GiveXPPowerlevel , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Eax )
-            .InsertCall ( )
-            .AddPtrStackArg ( 0x11c )
-            .ReplaceSize ( 0x4e45a - 0x4e451 )
-            .RestoreRegister ( )
-            .Hook ( );
-    }
-
     static mCFunctionHook Hook_Assesshit;
     Hook_Assesshit.Hook ( GetScriptAdminExt ( ).GetScript ( "AssessHit" )->m_funcScript , &AssessHit , mCBaseHook::mEHookType_OnlyStack );
-
-    Hook_AssureProjectiles
-        .Prepare ( RVA_ScriptGame ( 0x192a2 ) , &AssureProjectiles , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Ebx )
-        .InsertCall ( )
-        .AddRegArg ( mCRegisterBase::mERegisterType_Ebp )
-        .ReplaceSize ( 0x1932b - 0x192a2 )
-        .RestoreRegister ( )
-        .Hook ( );
 
     return &GetScriptInit();
 }

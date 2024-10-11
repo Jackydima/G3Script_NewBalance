@@ -862,6 +862,10 @@ GEInt GetAttitudeSummons ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntit
 	return Hook_GetAttituteSummons.GetOriginalFunction ( &GetAttitudeSummons )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
 }
 
+/**
+* Addition to the CanFreeze for new Spell!
+* Always return true on IceBlock spell
+*/
 static mCFunctionHook Hook_CanFreeze;
 GEInt CanFreezeAddition ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
 	// Fix for new Spell

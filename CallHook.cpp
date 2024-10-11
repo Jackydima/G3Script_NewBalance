@@ -4,7 +4,9 @@
 /**
 * Changed the Default Projectile Velocity for NPCs and give them Better Aiming
 */
+static mCCallHook Hook_Shoot_Velocity;
 void Shoot_Velocity ( gCScriptProcessingUnit* p_PSU , Entity* p_self , Entity* p_target, PSProjectile* p_projectile ) {
+	UNREFERENCED_PARAMETER ( p_PSU );
 
 	if ( *p_self == Entity::GetPlayer ( ) )
 		return;
@@ -55,7 +57,9 @@ void Shoot_Velocity ( gCScriptProcessingUnit* p_PSU , Entity* p_self , Entity* p
 	p_projectile->AccessProperty<PSProjectile::PropertyTargetDirection> ( ) = newTargetDirectionVec.GetNormalized();
 }
 
+static mCCallHook Hook_CombatMoveScale;
 void CombatMoveScale ( void* p_Ptr , gCScriptProcessingUnit* p_PSU, bCVector* vec) {
+	UNREFERENCED_PARAMETER ( p_Ptr );
 	Entity Self = p_PSU->GetSelfEntity ( );
 	//std::cout << "Name: " << Self.GetName ( ) << "\nRoutine: " << Self.Routine.GetProperty<PSRoutine::PropertyAction> ( ) << "\n";
 	switch ( Self.Routine.GetProperty<PSRoutine::PropertyAction> ( ) ) {
@@ -98,7 +102,9 @@ void CombatMoveScale ( void* p_Ptr , gCScriptProcessingUnit* p_PSU, bCVector* ve
 /**
 * Adjusted Bow Effect on Aiming for Player
 */
+static mCCallHook Hook_PS_Ranged_PowerAim;
 void PS_Ranged_PowerAim ( void* p_Ptr , gCScriptProcessingUnit* p_PSU, void* esp ) {
+	UNREFERENCED_PARAMETER ( p_Ptr );
 	Entity player = p_PSU->GetSelfEntity ( );
 	void* address = &powerAimEffectName;
 	if ( player.Inventory.IsSkillActive ( "Perk_Bow_3" ) ) {
@@ -114,7 +120,9 @@ void PS_Ranged_PowerAim ( void* p_Ptr , gCScriptProcessingUnit* p_PSU, void* esp
 	VirtualProtect ( ( LPVOID )esp , sizeof ( void* ) , currProt , &newProt );
 }
 
+static mCCallHook Hook_ZS_Ranged_PowerAim;
 void ZS_Ranged_PowerAim ( void* p_Ptr , gCScriptProcessingUnit* p_PSU , void* esp ) {
+	UNREFERENCED_PARAMETER ( p_Ptr );
 	Entity Self = p_PSU->GetSelfEntity ( );
 	void* address = &powerAimEffectName;
 
@@ -131,7 +139,7 @@ void ZS_Ranged_PowerAim ( void* p_Ptr , gCScriptProcessingUnit* p_PSU , void* es
 	VirtualProtect ( ( LPVOID )esp , sizeof ( void* ) , currProt , &newProt );
 }
 
-
+static mCCallHook Hook_AssureProjectiles;
 void AssureProjectiles ( GEInt registerBaseStack ) {
 	Entity* self = ( Entity* )( registerBaseStack - 0x2A0 );
 	//std::cout << "Self: " << self->GetName() << "\n";
@@ -144,6 +152,73 @@ void AssureProjectiles ( GEInt registerBaseStack ) {
 	Hook_AssureProjectiles.SetImmEbx<GEInt> ( leftHandWeaponIndex );
 	gEUseType leftHandUseType = self->Inventory.GetUseType ( leftHandWeaponIndex );
 	Template projectile = getProjectile ( *self , leftHandUseType );
+	//std::cout << "UseType: " << leftHandUseType << "\n";
 	GEInt stack = self->Inventory.AssureItems ( projectile , 0 , random + 10 );
 	*( GEInt* )( registerBaseStack - 0x2C4 ) = stack;
+}
+
+static mCCallHook Hook_GiveXPPowerlevel;
+void GiveXPPowerlevel ( gCNPC_PS* p_npc ) {
+	Entity entity = p_npc->GetEntity ( );
+	GEInt powerLevel = getPowerLevel ( entity );
+	Hook_GiveXPPowerlevel.SetImmEax ( powerLevel );
+}
+
+void HookCallHooks ( ) {
+	Hook_CombatMoveScale
+		.Prepare ( RVA_Game ( 0x16b8a3 ) , &CombatMoveScale , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Ecx )
+		.InsertCall ( )
+		.AddPtrStackArgEbp ( 0x8 )
+		.AddPtrStackArgEbp ( 0xC )
+		.AddRegArg ( mCRegisterBase::mERegisterType_Ecx )
+		.RestoreRegister ( )
+		.Hook ( );
+
+	Hook_AssureProjectiles
+		.Prepare ( RVA_ScriptGame ( 0x192a2 ) , &AssureProjectiles , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Ebx )
+		.InsertCall ( )
+		.AddRegArg ( mCRegisterBase::mERegisterType_Ebp )
+		.ReplaceSize ( 0x1932b - 0x192a2 )
+		.RestoreRegister ( )
+		.Hook ( );
+
+	if ( adjustXPReceive ) {
+		Hook_GiveXPPowerlevel
+			.Prepare ( RVA_ScriptGame ( 0x4e451 ) , &GiveXPPowerlevel , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Eax )
+			.InsertCall ( )
+			.AddPtrStackArg ( 0x11c )
+			.ReplaceSize ( 0x4e45a - 0x4e451 )
+			.RestoreRegister ( )
+			.Hook ( );
+	}
+
+	if ( useNewBowMechanics ) {
+		Hook_Shoot_Velocity
+			.Prepare ( RVA_ScriptGame ( 0x86882 ) , &Shoot_Velocity )
+			.InsertCall ( )
+			.AddPtrStackArgEbp ( 0x8 )
+			.AddPtrStackArgEbp ( 0xC )
+			.AddPtrStackArgEbp ( 0x10 )
+			.AddStackArg ( 0xB8 )
+			.RestoreRegister ( )
+			.Hook ( );
+
+		Hook_PS_Ranged_PowerAim
+			.Prepare ( RVA_ScriptGame ( 0x84940 ) , &PS_Ranged_PowerAim )
+			.InsertCall ( )
+			.AddPtrStackArgEbp ( 0x8 )
+			.AddPtrStackArgEbp ( 0xC )
+			.AddStackArg ( 0 )
+			.RestoreRegister ( )
+			.Hook ( );
+
+		Hook_ZS_Ranged_PowerAim
+			.Prepare ( RVA_ScriptGame ( 0x195f6 ) , &ZS_Ranged_PowerAim )
+			.InsertCall ( )
+			.AddPtrStackArgEbp ( 0x8 )
+			.AddPtrStackArgEbp ( 0xC )
+			.AddStackArg ( 0 )
+			.RestoreRegister ( )
+			.Hook ( );
+	}
 }
