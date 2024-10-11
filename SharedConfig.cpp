@@ -25,6 +25,7 @@ GEBool useNewBowMechanics = GETrue;
 GEBool enableNPCSprint = GETrue;
 GEBool zombiesCanSprint = GEFalse;
 GEBool enableNewTransformation = GETrue;
+GEBool disableMonsterRage = GETrue;
 
 GEInt poiseThreshold = -2;
 GEFloat npcArenaSpeedMultiplier = 1.1;

@@ -28,6 +28,7 @@ extern GEBool useNewBowMechanics;
 extern GEBool enableNPCSprint;
 extern GEBool zombiesCanSprint;
 extern GEBool enableNewTransformation;
+extern GEBool disableMonsterRage;
 
 extern GEInt poiseThreshold;
 extern GEFloat npcArenaSpeedMultiplier;

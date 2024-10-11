@@ -58,6 +58,7 @@ void LoadSettings ( ) {
         enableNPCSprint = config.GetBool ( "Script" , "EnableNPCSprint" , enableNPCSprint );
         zombiesCanSprint = config.GetBool ( "Script" , "ZombiesCanSprint" , zombiesCanSprint );
         enableNewTransformation = config.GetBool ( "Script" , "EnableNewTransformation" , enableNewTransformation );
+        disableMonsterRage = config.GetBool ( "Script" , "DisableMonsterRage" , disableMonsterRage );
     }
 
     CFFGFCWnd* test = CFFGFCWnd ( ).GetDesktopWindow();
@@ -924,14 +925,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         return gEAction_LieKnockDown;
     }
 
-    /*
-    * Nostun Of animals when they are Mad
-    if ( Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction_SprintAttack )
-    {
-        return gEAction_None;
-    }
-    */
-
     if ( ScriptAdmin.CallScriptFromScript ( "CanBePoisoned" , &Victim , &Damager , DamagerOwnerAction == gEAction_PierceAttack || DamagerOwnerAction == gEAction_HackAttack ) )
     {
         Victim.NPC.EnableStatusEffects ( gEStatusEffect_Poisoned , GETrue );
@@ -958,6 +951,12 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         Victim.Routine.FullStop ( );
         Victim.Routine.SetTask ( "ZS_Freeze" );
         Victim.Routine.AccessProperty<PSRoutine::PropertyTaskPosition> ( ) = 12 * iFreezeTime;
+        return gEAction_None;
+    }
+
+    // Nostun Of animals when they are Mad
+    if ( !disableMonsterRage && Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction_SprintAttack )
+    {
         return gEAction_None;
     }
 
