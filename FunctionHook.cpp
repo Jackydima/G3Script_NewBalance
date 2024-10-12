@@ -7,7 +7,6 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 	gEAction action = entity.Routine.GetProperty<PSRoutine::PropertyAction> ( );
 	GEInt staminaPoints = GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &entity , &None , 0 );
 	GEBool isArenaNPC = entity != Entity::GetPlayer ( ) && entity.NPC.GetProperty<PSNpc::PropertyAttackReason> ( ) == gEAttackReason_Arena;
-	GEFloat retVal = 1.0;
 	GEFloat multiPlier = 1.0;
 	GEBool isHumanInFistMode = GetScriptAdmin ( ).CallScriptFromScript ( "IsHumanoid" , &entity , &None ) && GetScriptAdmin ( ).CallScriptFromScript ( "IsInFistMode" , &entity , &None );
 	

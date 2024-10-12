@@ -363,7 +363,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Damager is transformed player or NPC
     else if ( DamagerOwner.Navigation.IsValid ( ) )
     {
-        GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 ) * 2.0f - startSTR * 0.5; //STR Bonus Real
+        GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 ) * 2.0f - startSTR * 0.5f; //STR Bonus Real
         if ( iStrength < 10 )
             iStrength = 10;
         //std::cout << "STR NPC: " << iStrength << "\tDamager: " << Damager.GetName() << "\tOwner: " << DamagerOwner.GetName() << "\n";
@@ -461,6 +461,11 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         FinalDamage *= 0.8;
         break;
     }
+
+    if ( ( Damager.IsItem() 
+        && ( Damager.Item.GetQuality ( ) & gEItemQuality_Blessed ) == gEItemQuality_Blessed && ScriptAdmin.CallScriptFromScript ( "IsEvil" , &Victim , NULL , 0 )) )
+        FinalDamage *= 1.2; 
+
     if ( GetScriptAdmin().CallScriptFromScript ( "GetStaminaPoints" , &DamagerOwner , &None , 0 ) <= 50 )
         FinalDamage *= 0.7;
     else if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &DamagerOwner , &None , 0 ) <= 20 )

@@ -440,6 +440,8 @@ VulnerabilityStatus DamageTypeEntityTestNB ( Entity& p_victim , Entity& p_damage
     case gEDamageType_Blade:
         if ( victimSpecies == gESpecies::gESpecies_Golem )
             return VulnerabilityStatus_STRONG;
+        if ( victimSpecies == gESpecies::gESpecies_Skeleton )
+            return VulnerabilityStatus_SLIGHTLYSTRONG;
         return VulnerabilityStatus_REGULAR;
     case gEDamageType_Missile:
         switch ( victimSpecies ) {
@@ -459,8 +461,6 @@ VulnerabilityStatus DamageTypeEntityTestNB ( Entity& p_victim , Entity& p_damage
             return VulnerabilityStatus_REGULAR;
         }
     case gEDamageType_Fire:
-        if ( p_victim.NPC.GetProperty<PSNpc::PropertyClass> ( ) == gEClass_Mage )
-            return VulnerabilityStatus_SLIGHTLYSTRONG;
         switch ( victimSpecies ) {
         case gESpecies_FireVaran:
         case gESpecies_FireGolem:
@@ -477,11 +477,11 @@ VulnerabilityStatus DamageTypeEntityTestNB ( Entity& p_victim , Entity& p_damage
         case gESpecies_Demon:
             return VulnerabilityStatus_STRONG;
         default:
+            if ( p_victim.NPC.GetProperty<PSNpc::PropertyClass> ( ) == gEClass_Mage )
+                return VulnerabilityStatus_SLIGHTLYSTRONG;
             return VulnerabilityStatus_REGULAR;
         }
     case gEDamageType_Ice:
-        if ( p_victim.NPC.GetProperty<PSNpc::PropertyClass> ( ) == gEClass_Mage )
-            return VulnerabilityStatus_SLIGHTLYSTRONG;
         if ( p_victim.NPC.HasStatusEffects ( gEStatusEffect::gEStatusEffect_Frozen ) ) {
             if ( IsSpellContainerNB ( p_damager ) )
                 return VulnerabilityStatus_IMMUNE;
@@ -491,6 +491,7 @@ VulnerabilityStatus DamageTypeEntityTestNB ( Entity& p_victim , Entity& p_damage
         case gESpecies_FireGolem:
             return VulnerabilityStatus_WEAK;
         case gESpecies_Zombie:
+        case gESpecies_Skeleton:
             return VulnerabilityStatus_STRONG;
         case gESpecies_IceGolem:
             if (IsSpellContainerNB ( p_damager ) )
@@ -510,15 +511,17 @@ VulnerabilityStatus DamageTypeEntityTestNB ( Entity& p_victim , Entity& p_damage
             return VulnerabilityStatus_REGULAR;
             
         default:
+            if ( p_victim.NPC.GetProperty<PSNpc::PropertyClass> ( ) == gEClass_Mage )
+                return VulnerabilityStatus_SLIGHTLYSTRONG;
             return VulnerabilityStatus_REGULAR;
         }
     case gEDamageType_Lightning:
-        if ( p_victim.NPC.GetProperty<PSNpc::PropertyClass> ( ) == gEClass_Mage )
-            return VulnerabilityStatus_SLIGHTLYSTRONG;
         if ( victimSpecies == gESpecies_Golem )
             return VulnerabilityStatus_WEAK;
         if (victimSpecies == gESpecies_Dragon && p_victim.GetName().Contains("Stone"))
             return VulnerabilityStatus_WEAK;
+        if ( p_victim.NPC.GetProperty<PSNpc::PropertyClass> ( ) == gEClass_Mage )
+            return VulnerabilityStatus_SLIGHTLYSTRONG;
         return VulnerabilityStatus_REGULAR;
     default:
         return VulnerabilityStatus_REGULAR;
