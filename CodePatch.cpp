@@ -74,9 +74,9 @@ void PatchCode ( ) {
     * Adjust the QualityBonuses
     */
     if (useSharpPercentage )
-        sharpBonusString = bCString::GetFormattedString ( "+(%d%%)" , blessedBonus );
+        sharpBonusString = bCString::GetFormattedString ( "+(%d%%)" , sharpBonus );
     else 
-        sharpBonusString = bCString::GetFormattedString ( "+(%d)" , blessedBonus );
+        sharpBonusString = bCString::GetFormattedString ( "+(%d)" , sharpBonus );
 
     blessedBonusString = bCString::GetFormattedString ( "+(%d)" , blessedBonus );
     forgedBonusString = bCString::GetFormattedString ( "+(%d)" , forgedBonus );
