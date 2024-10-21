@@ -324,7 +324,10 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
                 //New Scaling
                 if ( useNewBalanceMeleeScaling ) {
-                    GEChar* arr = ( GEChar* )*( DWORD* )( *( DWORD* )&Player.GetWeapon ( GETrue ).Item + 0x74 ); // A bit Unsafe ...
+                    GEChar* arr = nullptr; 
+                    Entity Weapon = Player.GetWeapon ( GETrue );
+                    if ( Weapon != None )
+                        arr = ( GEChar* )*( DWORD* )( *( DWORD* )&Weapon.Item + 0x74 ); // A bit Unsafe ...
                     bCString reqAttributeTag = "";
                     if ( arr != nullptr ) reqAttributeTag = bCString ( arr );
                     if ( playerRightWeaponType == gEUseType_1H && Player.Inventory.GetUseType ( leftWeaponStackIndex ) == gEUseType_1H ) {
@@ -340,7 +343,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                         iAttributeBonusDamage = static_cast< GEInt >( strength * 0.6 );
                     }
                     else if ( playerRightWeaponType == gEUseType_Staff || reqAttributeTag.Contains ( "INT" )
-                         || DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).Item.GetQuality ( ) & ( 8 + 16 ) ) {
+                         || (DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ) != None
+                             && DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).IsItem()
+                             && DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).Item.GetQuality ( ) & ( 8 + 16 )) ) {
                         iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + intelligence * 0.4 + 15 ); // Because you start with low Int, (Assume 60 INT)
                     }
                     else {
@@ -466,10 +471,18 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         && ( Damager.Item.GetQuality ( ) & gEItemQuality_Blessed ) == gEItemQuality_Blessed && ScriptAdmin.CallScriptFromScript ( "IsEvil" , &Victim , NULL , 0 )) )
         FinalDamage *= 1.2; 
 
-    if ( GetScriptAdmin().CallScriptFromScript ( "GetStaminaPoints" , &DamagerOwner , &None , 0 ) <= 50 )
-        FinalDamage *= 0.7;
-    else if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &DamagerOwner , &None , 0 ) <= 20 )
-        FinalDamage *= 0.5;
+    if ( DamagerOwner.GetWeapon ( GETrue ) != None
+        && ( DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_1H
+            || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_2H
+            || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_Axe
+            || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_Fist
+            || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_Staff
+            || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_Halberd ) ) {
+        if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &DamagerOwner , &None , 0 ) <= 50 )
+            FinalDamage *= 0.7;
+        else if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStaminaPoints" , &DamagerOwner , &None , 0 ) <= 20 )
+            FinalDamage *= 0.5;
+    }
     //std::cout << "Finaldamage after Vulnerabilities: " << FinalDamage << "\n";
 
     // Handelt es sich um einen Powercast? (Player and NPCs)
