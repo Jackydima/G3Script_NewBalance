@@ -58,8 +58,8 @@ static const GEDouble PROJECTILEMULTIPLICATOR = 27.777778;
 static const GEDouble* npcArmorMultiplierPtr = &npcArmorMultiplier;
 static GEU32 elementalPerkBonusResistance = 35;
 static const GEDouble* shootVelocityPtr = &shootVelocity;
-static GEFloat animationSpeedBonusMid = 1.3f;
-static GEFloat animationSpeedBonusHigh = 1.6f;
+static GEFloat animationSpeedBonusMid = 1.5f;
+static GEFloat animationSpeedBonusHigh = 2.0f;
 
 static char* BONETARGET = "Spine_Spine_3";
 static char* powerAimEffectName = "eff_ani_fight_bow_raise_01";

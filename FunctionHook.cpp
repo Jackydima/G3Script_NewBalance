@@ -66,9 +66,16 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 			}
 		}
 		else {
-			if ( getPowerLevel ( entity ) >= 40 )
+			Entity weapon = entity.GetWeapon ( GETrue );
+			if ( weapon.Interaction.GetUseType ( ) == gEUseType_CrossBow ) {
+				if ( getPowerLevel ( entity ) >= uniqueLevel )
+					return 2.5;
+				if ( getPowerLevel ( entity ) >= warriorLevel )
+					return 1.75;
+			}
+			if ( getPowerLevel ( entity ) >= uniqueLevel )
 				return animationSpeedBonusHigh;
-			if ( getPowerLevel ( entity ) >= 30 )
+			if ( getPowerLevel ( entity ) >= warriorLevel )
 				return animationSpeedBonusMid;
 		}
 		return 1;
@@ -143,19 +150,19 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 	case gEAction_Cock:
 		if ( entity == Entity::GetPlayer ( ) ) {
 			if ( entity.Inventory.IsSkillActive ( "Perk_Crossbow_3" ) )
-				return 2.0 * multiPlier;
+				return 2.5;
 			if ( entity.Inventory.IsSkillActive ( "Perk_Crossbow_2" ) )
-				return 1.5 * multiPlier;
-			return 1.0 * multiPlier;
+				return 1.75;
+			return 1.0;
 		}
 
-		if ( getPowerLevel ( entity ) >= 35 ) {
-			return 2.0 * multiPlier;
+		if ( getPowerLevel ( entity ) >= uniqueLevel ) {
+			return 2.5;
 		}
-		if ( getPowerLevel ( entity ) > 20 ) {
-			return 1.5 * multiPlier;
+		if ( getPowerLevel ( entity ) >= warriorLevel ) {
+			return 1.75;
 		}
-		return 1 * multiPlier;
+		return 1;
 
 	default:
 		return 1 * multiPlier;
