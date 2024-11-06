@@ -31,6 +31,7 @@ extern GEBool zombiesCanSprint;
 extern GEBool enableNewTransformation;
 extern GEBool disableMonsterRage;
 
+extern GEFloat NPCDamageReductionMultiplicator;
 extern GEInt poiseThreshold;
 extern GEFloat npcArenaSpeedMultiplier;
 extern GEFloat npcWeaponDamageMultiplier;
@@ -65,6 +66,7 @@ static char* BONETARGET = "Spine_Spine_3";
 static char* powerAimEffectName = "eff_ani_fight_bow_raise_01";
 static char* powerAimWarriorEffectName = "eff_ani_fight_bow_raise_warrior_01";
 static char* powerAimEliteEffectName = "eff_ani_fight_bow_raise_elite_01";
+static char* crosshairName = "G3_HUD_CrossHair.tga";
 
 static bCString blessedBonusString;
 static bCString sharpBonusString;

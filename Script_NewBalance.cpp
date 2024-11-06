@@ -37,6 +37,7 @@ void LoadSettings ( ) {
         playerOnlyPerfectBlock = config.GetBool ( "Script" , "PlayerOnlyPerfectBlock" , playerOnlyPerfectBlock );
         useNewBalanceMeleeScaling = config.GetBool ( "Script" , "NewMeleeScaling" , useNewBalanceMeleeScaling );
         adjustXPReceive = config.GetBool ( "Script" , "AdjustXPReceive" , adjustXPReceive );
+        NPCDamageReductionMultiplicator = config.GetFloat ( "Script" , "NPCDamageReductionMultiplicator" , NPCDamageReductionMultiplicator );
         poiseThreshold = config.GetInt ( "Script" , "PoiseThreshold" , poiseThreshold );
         staminaRecoveryDelay = config.GetU32 ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
         staminaRecoveryPerTick = config.GetU32 ( "Script" , "StaminaRecoveryPerTick" , staminaRecoveryPerTick );
@@ -65,9 +66,6 @@ void LoadSettings ( ) {
         warriorLevel = config.GetU32 ( "Script" , "WarriorLevelCap" , warriorLevel );
         noviceLevel = config.GetU32 ( "Script" , "NoviceLevelCap" , noviceLevel );
     }
-
-    CFFGFCWnd* test = CFFGFCWnd ( ).GetDesktopWindow();
-    CFFGFCView view = CFFGFCView ( 20386 , test );
 }
 
 static GEU32 getPerfectBlockLastTime ( bCString iD ) {
@@ -610,6 +608,14 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         victimDamageReceiver->AccessVulnerableState ( ) = 0;
     }
 
+    // New Multiplier for NPC vs NPC Damage
+    if ( !DamagerOwner.IsPlayer ( ) && !Victim.IsPlayer ( ) ) {
+        FinalDamage2 *= NPCDamageReductionMultiplicator;
+    }
+
+    if ( FinalDamage2 < 5 )
+        FinalDamage2 = 5;
+
     //
     // Schritt 4: Parade
     //
@@ -625,8 +631,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
          5. Magie-Angriffe kann nur der Held abwehren. Voraussetzung: Er beherrscht "Magische Stäbe" und hält in seinen Händen einen Stab und einen Zauberspruch.
          6. Fernkampf-Angriffe kann man nur mit einem Schild abwehren.
     */
-    if ( FinalDamage2 < 5 )
-        FinalDamage2 = 5;
 
     if ( Victim == Player )
         Victim.Effect.StopEffect ( GETrue );
