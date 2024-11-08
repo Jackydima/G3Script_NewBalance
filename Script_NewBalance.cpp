@@ -117,6 +117,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     * After the fix, when Attacker are Stunning Victims the Weapon of the Victim has Attackframes even thought he got stunned before!
     * So here it should ignore Hits, when Attacker is Stunned before but not if he got the PipiStumble.
     */
+    // TODO: Remove it now, since it should be fixed
+    /*
     switch ( DamagerOwnerAction ) {
     case gEAction_QuickParadeStumble:
     case gEAction_PierceStumble:
@@ -131,7 +133,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     case gEAction_AbortAttack:
     case gEAction_SitKnockDown:
         return DamagerOwnerAction;
-    }
+    }*/
     
     //std::cout << "Victim gEAction: " << Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( )
        // << "\tDamager gEAction: " << DamagerOwnerAction << "\n";
