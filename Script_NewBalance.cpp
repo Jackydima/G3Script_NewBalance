@@ -1,12 +1,5 @@
 #include "Script_NewBalance.h"
-#include <iostream>
-#include "util/Memory.h"
-#include "util/Logging.h"
-#include "util/Hook.h"
-//#include "util/ScriptUtil.h"
-#include "Script.h"
-#include "utility.h"
-#include "SharedConfig.h"
+
 
 // eSSetupEngine[1ea] = AB; eSSetupEngine[1eb] alternative AI
 static std::map<bCString , GEU32> PerfektBlockTimeStampMap = {};
@@ -60,6 +53,10 @@ void LoadSettings ( ) {
         zombiesCanSprint = config.GetBool ( "Script" , "ZombiesCanSprint" , zombiesCanSprint );
         enableNewTransformation = config.GetBool ( "Script" , "EnableNewTransformation" , enableNewTransformation );
         disableMonsterRage = config.GetBool ( "Script" , "DisableMonsterRage" , disableMonsterRage );
+        enableNewMagicAiming = config.GetBool ( "Script" , "EnableNewMagicAiming" , enableNewMagicAiming );
+        enableAOEDamage = config.GetBool ( "Script" , "EnableAOEDamage" , enableAOEDamage );
+        bCString AOENamesString = config.GetString ( "Script" , "AOENames" , "" );
+        AOENames = splitTobCStrings ( AOENamesString.GetText ( ) , ';' );
         bossLevel = config.GetU32 ( "Script" , "BossLevelCap" , bossLevel );
         uniqueLevel = config.GetU32 ( "Script" , "UniqueLevelCap" , uniqueLevel );
         eliteLevel = config.GetU32 ( "Script" , "EliteLevelCap" , eliteLevel );
@@ -111,12 +108,23 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     auto damagerOwnerDamageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( DamagerOwner.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
     auto victimDamageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( Victim.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
 
+    for each ( bCString entry in AOENames ) {
+        if ( entry != "" && Damager.GetName ( ).Contains ( entry ) ) {
+            Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageAmount> ( ) = 0;
+            std::cout << "DamagerName Ignored: " << Damager.GetName ( ) << "\n";
+            return gEAction_Stumble;
+        }
+    }
+    std::cout << "DamagerName: " << Damager.GetName ( ) << "\n";
+
     /**
     * Workaround: Changed in the FixResetAll() the Trigger of Weapons when functions like all Stumble + PipiStumble get called it would still register Weaponhits 
     * after Trading with no stun
     * After the fix, when Attacker are Stunning Victims the Weapon of the Victim has Attackframes even thought he got stunned before!
     * So here it should ignore Hits, when Attacker is Stunned before but not if he got the PipiStumble.
     */
+    // TODO: Remove it now, since it should be fixed
+    /*
     switch ( DamagerOwnerAction ) {
     case gEAction_QuickParadeStumble:
     case gEAction_PierceStumble:
@@ -131,7 +139,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     case gEAction_AbortAttack:
     case gEAction_SitKnockDown:
         return DamagerOwnerAction;
-    }
+    }*/
     
     //std::cout << "Victim gEAction: " << Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( )
        // << "\tDamager gEAction: " << DamagerOwnerAction << "\n";
@@ -157,6 +165,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     
     // Calc weapon damage (WAF-SCHD)
     GEI32 iDamageAmount = Damager.Damage.GetProperty<PSDamage::PropertyDamageAmount> ( );
+    std::cout << "DamageAmount in LogicalDamage: " << iDamageAmount << "\n";
     GEFloat fDamageMultiplier = Damager.Damage.GetProperty<PSDamage::PropertyDamageHitMultiplier> ( );
     const GEInt iWeaponDamage = static_cast< GEInt >( fDamageMultiplier * iDamageAmount );
     bCString VictimItemTemplateName = Victim.Inventory.GetTemplateItem(Victim.Inventory.FindStackIndex ( gESlot_RightHand )).GetName();
@@ -1069,6 +1078,9 @@ gSScriptInit const * GE_STDCALL ScriptInit( void )
     LoadSettings ( );
     PatchCode ( );
     AddNewEffect ( );
+    if ( enableNewMagicAiming ) {
+        InitGUI ( );
+    }
 
     HookFunctions ( );
     HookCallHooks ( ); 
@@ -1092,8 +1104,10 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD dwReason, LPVOID )
     switch( dwReason )
     {
     case DLL_PROCESS_ATTACH:
-        //AllocConsole ( );
-        //freopen_s ( ( FILE** )stdout , "CONOUT$" , "w" , stdout );
+#ifdef DEBUG
+        AllocConsole ( );
+        freopen_s ( ( FILE** )stdout , "CONOUT$" , "w" , stdout );
+#endif
         ::DisableThreadLibraryCalls( hModule );
         break;
     case DLL_PROCESS_DETACH:

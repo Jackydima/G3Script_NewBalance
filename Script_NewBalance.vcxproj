@@ -45,6 +45,8 @@
     <ClCompile>
       <AdditionalIncludeDirectories>.\;..\..\Shared\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling />
+      <AdditionalUsingDirectories>DEBUG 1</AdditionalUsingDirectories>
+      <PreprocessorDefinitions>DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -69,6 +71,7 @@
     <ClCompile Include="CodePatch.cpp" />
     <ClCompile Include="FunctionHook.cpp" />
     <ClCompile Include="ge_DamageReceiver_ext.cpp" />
+    <ClCompile Include="MyGUI.cpp" />
     <ClCompile Include="SharedConfig.cpp" />
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="Script_NewBalance.cpp" />
@@ -83,10 +86,13 @@
     <ClInclude Include="..\..\Shared\util\Module.h" />
     <ClInclude Include="..\..\Shared\util\Util.h" />
     <ClInclude Include="CodePatch.h" />
+    <ClInclude Include="ContactIterator.h" />
     <ClInclude Include="FunctionHook.h" />
     <ClInclude Include="CallHook.h" />
     <ClInclude Include="ge_DamageReceiver_ext.h" />
     <ClInclude Include="me_propertymacros.h" />
+    <ClInclude Include="MyGUI.h" />
+    <ClInclude Include="Projectile_PS.h" />
     <ClInclude Include="SharedConfig.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="Script_NewBalance.h" />

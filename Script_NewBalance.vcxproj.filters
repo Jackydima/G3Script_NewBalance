@@ -40,6 +40,7 @@
       <Filter>util</Filter>
     </ClCompile>
     <ClCompile Include="SharedConfig.cpp" />
+    <ClCompile Include="MyGUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Shared\gui\ge_hudstaticnpc.h">
@@ -74,6 +75,9 @@
       <Filter>util</Filter>
     </ClInclude>
     <ClInclude Include="SharedConfig.h" />
+    <ClInclude Include="MyGUI.h" />
+    <ClInclude Include="Projectile_PS.h" />
+    <ClInclude Include="ContactIterator.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Shared\util\Logging.inl">

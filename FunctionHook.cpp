@@ -1,6 +1,8 @@
 
 #include "FunctionHook.h"
 #include "ge_effectmap.h"
+#include "Projectile_PS.h"
+#include "ContactIterator.h"
 
 GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 	gESpecies species = entity.NPC.GetProperty<PSNpc::PropertySpecies> ( );
@@ -943,7 +945,110 @@ GEInt OnPlayerGetDamage ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity
 	return retValue;
 }
 
+static mCFunctionHook Hook_MagicProjectile;
+GEInt MagicProjectile ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEInt p_args ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+	Entity Spell = Self.Interaction.GetSpell ( );
+	Entity Item = Self.Inventory.GetItemFromSlot ( Self.Inventory.GetSlotFromStack ( p_args ) );
+	bCMatrix ItemPose = Item.GetPose ( );
+
+	Entity Spawn = Spell.Magic.GetSpawn ( );
+	Entity SpawnedProjectile = Entity::Spawn ( Spawn.GetTemplate ( ) , ItemPose );
+
+	SpawnedProjectile.Interaction.SetOwner ( Self );
+	SpawnedProjectile.Interaction.SetSpell ( Spell );
+	SpawnedProjectile.CollisionShape.CreateShape ( eECollisionShapeType_Point , eEShapeGroup_Projectile , bCVector ( 0 , 0 , 0 ) , bCVector ( 0 , 0 , 0 ) );
+	SpawnedProjectile.EnableCollisionWith ( SpawnedProjectile , GEFalse );
+	SpawnedProjectile.EnableCollisionWith ( Self , GEFalse );
+
+	bCVector Vec = SpawnedProjectile.GetPose ( ).AccessZAxis ( );
+	Vec.AccessY ( ) += 0.01;
+	Vec.Normalize ( );
+
+	// Free Aim Logic //
+	if ( Self.IsPlayer ( ) && GETrue ) {
+		Vec = Self.Camera.GetScreenCenterPickPoint ( ) - ItemPose.GetTranslation ( );
+		Vec.Normalize ( );
+		SpawnedProjectile.Projectile.SetTarget ( None );
+		//std::cout << "Impact Vec: x=" << Vec.GetX ( ) << ", y=" << Vec.GetY ( ) << ", z=" << Vec.GetZ ( ) << "\n";
+	}
+	else {
+		SpawnedProjectile.Projectile.SetTarget ( Other );
+	}
+	////
+
+	SpawnedProjectile.Projectile.AccessProperty<PSProjectile::PropertyPathStyle> ( ) = gEProjectilePath_Line;
+	if ( Other != None && Self.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction_PowerCast ) {
+		SpawnedProjectile.Projectile.SetTarget ( Other );
+		SpawnedProjectile.Projectile.AccessProperty<PSProjectile::PropertyPathStyle> ( ) = gEProjectilePath_Missile;
+	}
+	SpawnedProjectile.Projectile.AccessProperty<PSProjectile::PropertyTargetDirection> ( ) = Vec;
+	SpawnedProjectile.Projectile.Shoot ( );
+	SpawnedProjectile.Damage.AccessProperty<PSDamage::PropertyManaUsed> ( ) = Self.NPC.GetProperty<PSNpc::PropertyManaUsed> ( );
+	return 1;
+}
+
+static mCFunctionHook Hook_OnTouch;
+void OnTouch ( eCEntity* p_entity , eCContactIterator* p_contactIterator ) {
+	gCProjectile_PS* This = Hook_OnTouch.GetSelf< gCProjectile_PS* > ( );
+	GEBool IsFlying = This->IsFlying ( );
+	GEBool HasCollided = This->HasCollided ( );
+	Hook_OnTouch.GetOriginalFunction ( &OnTouch )( p_entity , p_contactIterator );
+	if ( HasCollided || !IsFlying )
+		return;
+	eCEntity* eCE = *( eCEntity** )( ( DWORD )This + 0xC );
+	gCInteraction_PS* interaction = ( gCInteraction_PS* )eCE->GetPropertySet ( eEPropertySetType_Interaction );
+	gCDamage_PS* damage = ( gCDamage_PS* )eCE->GetPropertySet ( eEPropertySetType_Damage );
+	Entity owner = interaction->GetOwner ( ).GetEntity ( );
+	for each ( bCString entry in AOENames ) {
+		if ( entry != "" && eCE->GetName ( ).Contains ( entry ) ) {
+			//std::cout << entry << "\n";
+			This->SetTouchBehavior ( bTPropertyContainer< gEProjectileTouchBehavior> ( gEProjectileTouchBehavior_KillSelf ) );
+			bCVector loc = p_contactIterator->GetAvgCollisionPosition ( );
+			//std::cout << "Location: x= " << loc.AccessX ( ) << "\ty= " << loc.AccessY ( )
+			//    << "\tz= " << loc.AccessZ ( ) << "\n";
+			bCMatrix pos = bCMatrix ( 0.0 );
+			pos.SetToTranslation ( loc );
+
+			Entity temp = Template ( "Spl_HeatWave" );
+			if ( temp == None )
+				return;
+			Template templateSpawn = temp.Magic.GetSpawn ( ).GetTemplate ( );
+
+			if ( !templateSpawn.IsValid ( ) )
+				return;
+			Entity spawn = Entity::Spawn ( templateSpawn , pos );
+			PSDamage damagePS = damage;
+			spawn.Interaction.SetOwner ( owner );
+			spawn.Interaction.SetSpell ( interaction->GetSpell ( ).GetEntity ( ) );
+			std::cout << "Name Spell = " << interaction->GetSpell ( ).GetEntity ( )->GetName() << "\n";
+			GEInt damageAmount = damagePS.GetProperty<PSDamage::PropertyDamageAmount> ( );
+			spawn.Damage.AccessProperty<PSDamage::PropertyDamageAmount> ( ) = damageAmount;
+			std::cout << "DamageAmount in Ontouch = " << spawn.Damage.GetProperty<PSDamage::PropertyDamageAmount> ( ) << "\n";
+			gEDamageType damageType = damagePS.GetProperty<PSDamage::PropertyDamageType> ( );
+			spawn.Damage.AccessProperty<PSDamage::PropertyDamageType> ( ) = damageType;
+			//std::cout << "DamageType = " << damageType << "\n";
+			//eCE->EnableDeactivation ( GETrue ); //good one!
+			eCE->EnablePicking ( GEFalse , GEFalse ); //Also really good!
+			return;
+		}
+	}
+
+}
 void HookFunctions ( ) {
+
+	if ( enableNewMagicAiming ) {
+		Hook_MagicProjectile
+			.Prepare ( RVA_ScriptGame ( 0x52db0 ) , &MagicProjectile )
+			.Hook ( );
+	}
+
+	if ( /*enableAOEDamage*/ GEFalse) {
+		Hook_OnTouch
+			.Prepare ( RVA_Game ( 0x152650 ) , &OnTouch , mCBaseHook::mEHookType_ThisCall )
+			.Hook ( );
+	}
+
 	static mCFunctionHook Hook_CanBurn;
 	GetScriptAdmin ( ).LoadScriptDLL ( "Script_G3Fixes.dll" );
 	if ( !GetScriptAdmin ( ).IsScriptDLLLoaded ( "Script_G3Fixes.dll" ) || useNewBalanceMagicWeapon ) {
@@ -953,7 +1058,6 @@ void HookFunctions ( ) {
 	else {
 		Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript , &CanFreezeAddition , mCBaseHook::mEHookType_OnlyStack );
 	}
-
 
 	Hook_AddHitPoints
 		.Prepare ( RVA_ScriptGame ( 0x35b50 ) , &AddHitPoints )

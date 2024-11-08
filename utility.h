@@ -26,7 +26,7 @@ enum WarriorType {
 };
 
 
-
+std::vector<bCString> splitTobCStrings ( const std::string str , char delim );
 GEInt getPowerLevel ( Entity& p_entity );
 gEWeaponCategory GetHeldWeaponCategoryNB ( Entity const& a_Entity );
 Template getProjectile ( Entity& p_entity , gEUseType p_rangedWeaponType );

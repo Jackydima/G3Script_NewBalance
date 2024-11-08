@@ -27,6 +27,9 @@ GEBool enableNPCSprint = GETrue;
 GEBool zombiesCanSprint = GEFalse;
 GEBool enableNewTransformation = GETrue;
 GEBool disableMonsterRage = GETrue;
+GEBool enableNewMagicAiming = GETrue;
+GEBool enableAOEDamage = GETrue;
+std::vector<bCString> AOENames = {};
 
 GEFloat NPCDamageReductionMultiplicator = 0.5;
 GEInt poiseThreshold = -2;

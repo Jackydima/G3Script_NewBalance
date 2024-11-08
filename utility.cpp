@@ -1,6 +1,25 @@
 #include "utility.h"
 
 
+std::vector<bCString> splitTobCStrings ( const std::string str , char delim ) {
+    std::vector<bCString> result;
+    size_t start = 0;
+    size_t end = str.find ( delim );
+
+    while ( end != std::string::npos ) {
+        bCString gES = bCString ( str.substr ( start , end - start ).c_str ( ) );
+        gES.Trim ( );
+        result.push_back ( gES );
+
+        start = end + 1;
+        end = str.find ( delim , start );
+    }
+    bCString gES = bCString ( str.substr ( start , end - start ).c_str ( ) );
+    gES.Trim ( );
+    result.push_back ( gES );
+    return result;
+}
+
 // SDK Function
 gEWeaponCategory GetHeldWeaponCategoryNB ( Entity const& a_Entity )
 {

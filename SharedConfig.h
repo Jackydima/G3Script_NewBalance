@@ -2,6 +2,7 @@
 #include "util/Memory.h"
 #include "util/Logging.h"
 #include "util/Hook.h"
+#include "vector"
 
 
 //TODO 
@@ -30,6 +31,9 @@ extern GEBool enableNPCSprint;
 extern GEBool zombiesCanSprint;
 extern GEBool enableNewTransformation;
 extern GEBool disableMonsterRage;
+extern GEBool enableNewMagicAiming;
+extern GEBool enableAOEDamage;
+extern std::vector<bCString> AOENames;
 
 extern GEFloat NPCDamageReductionMultiplicator;
 extern GEInt poiseThreshold;
