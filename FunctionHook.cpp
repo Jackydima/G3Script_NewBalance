@@ -953,6 +953,8 @@ void HookFunctions ( ) {
 	else {
 		Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript , &CanFreezeAddition , mCBaseHook::mEHookType_OnlyStack );
 	}
+	static mCFunctionHook Hook_CanBePoisoned;
+	Hook_CanBePoisoned.Hook ( GetScriptAdminExt ( ).GetScript ( "CanBePoisoned" )->m_funcScript , &CanBePoisoned );
 
 
 	Hook_AddHitPoints

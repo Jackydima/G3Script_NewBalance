@@ -266,6 +266,37 @@ GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entit
     return GEFalse;
 }
 
+GEInt CanBePoisoned ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+    INIT_SCRIPT_EXT ( Victim , Damager );
+
+    GEInt Random = Entity::GetRandomNumber ( 100 );
+    if ( GetScriptAdmin ( ).CallScriptFromScript ( "IsEvil" , &Victim , &None , 0 ) ) {
+        return 0;
+    }
+
+    if ( !Damager.IsItem ( ) || !( Damager.Item.GetQuality ( ) & gEItemQuality_Poisoned ) ) {
+        return 0;
+    }
+
+    if ( !a_iArgs && Damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( ) == 2
+        && !IsNormalProjectileNB ( Damager )  ) {
+        return 0;
+    }
+
+    if ( Victim.IsPlayer ( ) ) {
+        if ( Victim.Inventory.IsSkillActive ( "Perk_ImmuneToPoison" ) && Random > 15 ) {
+            return 0;
+        }
+        return 1;
+    }
+
+    if ( Random > 15 
+        && ( getPowerLevel ( Victim ) >= uniqueLevel || Victim.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( ) == gEPoliticalAlignment_Ass ) )
+        return 0;
+    return 1;
+}
+
+
 GEBool IsNormalProjectileNB ( Entity& p_damager ) {
     //std::cout << "Projectilename: " << p_damager.GetName ( ) << std::endl;
     //std::cout << "Projectile?: " << p_damager.Projectile.IsValid() << std::endl;
@@ -560,7 +591,7 @@ GEU32 GetPoisonDamage ( Entity& attacker ) {
     }
 
     GEInt level = getPowerLevel ( attacker );
-    poisonDamage = static_cast< GEInt >( level * 0.1 ) + 2;
+    poisonDamage = static_cast< GEInt >( level * 0.1 ) + 3;
     return poisonDamage;
 }
 
