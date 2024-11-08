@@ -324,7 +324,7 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     switch ( playerUseType ) {
     case gEUseType_1H:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_3" ) ) )
-            level = 3;
+            level = 2;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
             level = 1;
         if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , p_entity )
@@ -334,21 +334,22 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     case gEUseType_2H:
     case gEUseType_Axe:
     case gEUseType_Halberd:
+    case gEUseType_Pickaxe:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_3" ) ) )
-            level = 3;
+            level = 2;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_2" ) ) )
             level = 1;
         break;
     case gEUseType_Staff:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_3" ) ) )
-            level = 3;
+            level = 2;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_2" ) ) )
             level = 1;
         break;
     case gEUseType_Cast:
         GEInt playerInt = p_entity.PlayerMemory.GetIntelligence ( );
         if ( playerInt > 199 ) 
-            level = 3;
+            level = 2;
         else if ( playerInt > 99 ) 
             level = 1;
         break;
@@ -356,7 +357,9 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStrength" , &p_entity , &None , 0 ) >= 250 ) {
         level += 1;
     }
-    if ( p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) > 49 )
+    if ( p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) >= 35 ) // TODO: Add configValue for that
+        level += 1;
+    if ( p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) >= 60 )
         level += 1;
     //std::cout << "Returned PCHERO Level: " << level << "\n";
     return level; // or level
