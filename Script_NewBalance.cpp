@@ -368,7 +368,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Damager is transformed player or NPC
     else if ( DamagerOwner.Navigation.IsValid ( ) )
     {
-        GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 ) * 2.0f - startSTR * 0.5f; //STR Bonus Real
+        GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 ) * 1.8f - 50; //STR Bonus Real
         if ( iStrength < 10 )
             iStrength = 10;
         //std::cout << "STR NPC: " << iStrength << "\tDamager: " << Damager.GetName() << "\tOwner: " << DamagerOwner.GetName() << "\n";
@@ -962,11 +962,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
     if ( ScriptAdmin.CallScriptFromScript ( "CanBeDiseased" , &Victim , &Damager , 0 ) )
     {
-        if ( Damager.GetName ( ).Contains ( "Fist" ) 
-            || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction>() == gEAction_HackAttack 
-            || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction_PierceAttack ) {
-            Victim.NPC.EnableStatusEffects ( gEStatusEffect_Diseased , GETrue );
-        }
+        Victim.NPC.EnableStatusEffects ( gEStatusEffect_Diseased , GETrue );
     }
 
     if ( ScriptAdmin.CallScriptFromScript ( "CanFreeze" , &Victim , &Damager , FinalDamage2 ) )
