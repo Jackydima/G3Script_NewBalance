@@ -608,11 +608,11 @@ GEInt getWeaponLevelNB ( Entity& p_entity ) {
         }
         if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_1H , p_entity ) ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_3" ) ) )
-                return 3;
-            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
                 return 2;
-            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1" ) ) )
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
                 return 1;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1" ) ) )
+                return 0;
         }
         if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , p_entity ) ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1H_2" ) ) )

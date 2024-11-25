@@ -74,6 +74,7 @@
       <Filter>util</Filter>
     </ClInclude>
     <ClInclude Include="SharedConfig.h" />
+    <ClInclude Include="ge_DamageReceiver.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Shared\util\Logging.inl">

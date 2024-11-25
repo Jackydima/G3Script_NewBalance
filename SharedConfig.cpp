@@ -28,7 +28,11 @@ GEBool zombiesCanSprint = GEFalse;
 GEBool enableNewTransformation = GETrue;
 GEBool disableMonsterRage = GETrue;
 
-GEFloat NPCDamageReductionMultiplicator = 0.5;
+GEFloat PerfectBlockDamageMult = 2.0f;
+GEFloat PowerAttackArmorPen = 0.1f;
+GEFloat QuickAttackArmorRes = 0.05f;
+GEFloat SpecialAttackArmorPen = 0.125f;
+GEFloat NPCDamageReductionMultiplicator = 0.5f;
 GEInt poiseThreshold = -2;
 GEFloat npcArenaSpeedMultiplier = 1.1;
 GEFloat npcWeaponDamageMultiplier = 0.15;

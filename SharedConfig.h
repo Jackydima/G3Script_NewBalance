@@ -31,6 +31,10 @@ extern GEBool zombiesCanSprint;
 extern GEBool enableNewTransformation;
 extern GEBool disableMonsterRage;
 
+extern GEFloat PerfectBlockDamageMult;
+extern GEFloat PowerAttackArmorPen;
+extern GEFloat QuickAttackArmorRes;
+extern GEFloat SpecialAttackArmorPen;
 extern GEFloat NPCDamageReductionMultiplicator;
 extern GEInt poiseThreshold;
 extern GEFloat npcArenaSpeedMultiplier;
@@ -62,7 +66,7 @@ static const GEDouble* shootVelocityPtr = &shootVelocity;
 static GEFloat animationSpeedBonusMid = 1.5f;
 static GEFloat animationSpeedBonusHigh = 2.0f;
 
-static char* BONETARGET = "Spine_Spine_3";
+static char* BONETARGET = "Spine_Spine_1";
 static char* powerAimEffectName = "eff_ani_fight_bow_raise_01";
 static char* powerAimWarriorEffectName = "eff_ani_fight_bow_raise_warrior_01";
 static char* powerAimEliteEffectName = "eff_ani_fight_bow_raise_elite_01";
