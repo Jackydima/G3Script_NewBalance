@@ -269,9 +269,12 @@ GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entit
 GEInt CanBePoisoned ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
     INIT_SCRIPT_EXT ( Victim , Damager );
 
-    GEInt Random = Entity::GetRandomNumber ( 100 );
     if ( GetScriptAdmin ( ).CallScriptFromScript ( "IsEvil" , &Victim , &None , 0 ) ) {
         return 0;
+    }
+
+    if ( Damager.Magic.IsValid ( ) ) {
+        return 1;
     }
 
     if ( !Damager.IsItem ( ) || !( Damager.Item.GetQuality ( ) & gEItemQuality_Poisoned ) ) {
@@ -283,14 +286,15 @@ GEInt CanBePoisoned ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , E
         return 0;
     }
 
+    GEInt Random = Entity::GetRandomNumber ( 100 );
     if ( Victim.IsPlayer ( ) ) {
-        if ( Victim.Inventory.IsSkillActive ( "Perk_ImmuneToPoison" ) && Random > 15 ) {
+        if ( Victim.Inventory.IsSkillActive ( "Perk_ImmuneToPoison" ) && Random > 20 ) {
             return 0;
         }
         return 1;
     }
 
-    if ( Random > 15 
+    if ( Random > 20 
         && ( getPowerLevel ( Victim ) >= uniqueLevel || Victim.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( ) == gEPoliticalAlignment_Ass ) )
         return 0;
     return 1;
