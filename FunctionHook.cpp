@@ -288,7 +288,8 @@ GEInt UpdateHitPointsOnTick ( Entity p_entity ) {
 		GEInt maxHealth = p_entity.PlayerMemory.GetHitPointsMax ( );
 		retVal += static_cast< GEInt >( maxHealth * 0.01 );
 	}
-	else if ( !p_entity.IsPlayer ( ) && getPowerLevel ( p_entity ) >= bossLevel ) {
+	else if ( !p_entity.IsPlayer ( ) && p_entity.Party.AccessProperty<PSParty::PropertyPartyMemberType>() != gEPartyMemberType_Summoned
+		&& getPowerLevel ( p_entity ) >= bossLevel ) {
 		GEInt maxHealth = p_entity.DamageReceiver.GetProperty<PSDamageReceiver::PropertyHitPointsMax> ( );
 		retVal += static_cast< GEInt >( maxHealth * 0.01 );
 	}
