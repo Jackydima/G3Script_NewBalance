@@ -42,6 +42,8 @@ void LoadSettings ( ) {
         PowerAttackArmorPen = config.GetFloat ( "Script" , "PowerAttackArmorPen" , PowerAttackArmorPen );
         QuickAttackArmorRes = config.GetFloat ( "Script" , "QuickAttackArmorRes" , QuickAttackArmorRes );
         SpecialAttackArmorPen = config.GetFloat ( "Script" , "SpecialAttackArmorPen" , SpecialAttackArmorPen );
+        NPCStrengthMultiplicator = config.GetFloat ( "Script" , "NPCStrengthMultiplicator" , NPCStrengthMultiplicator );
+        NPCStrengthCorrection = config.GetFloat ( "Script" , "NPCStrengthCorrection" , NPCStrengthCorrection );
 
         NPCDamageReductionMultiplicator = config.GetFloat ( "Script" , "NPCDamageReductionMultiplicator" , NPCDamageReductionMultiplicator );
         poiseThreshold = config.GetInt ( "Script" , "PoiseThreshold" , poiseThreshold );
@@ -374,7 +376,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Damager is transformed player or NPC
     else if ( DamagerOwner.Navigation.IsValid ( ) )
     {
-        GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 ) * 1.8f - 50; //STR Bonus Real
+        GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 ) * NPCStrengthMultiplicator + NPCStrengthCorrection; //STR Bonus Real
         if ( iStrength < 10 )
             iStrength = 10;
         //std::cout << "STR NPC: " << iStrength << "\tDamager: " << Damager.GetName() << "\tOwner: " << DamagerOwner.GetName() << "\n";
