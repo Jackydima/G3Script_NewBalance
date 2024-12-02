@@ -89,6 +89,7 @@
     <ClInclude Include="ContactIterator.h" />
     <ClInclude Include="FunctionHook.h" />
     <ClInclude Include="CallHook.h" />
+    <ClInclude Include="ge_DamageReceiver.h" />
     <ClInclude Include="ge_DamageReceiver_ext.h" />
     <ClInclude Include="me_propertymacros.h" />
     <ClInclude Include="MyGUI.h" />

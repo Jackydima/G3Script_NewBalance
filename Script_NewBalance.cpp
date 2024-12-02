@@ -30,6 +30,14 @@ void LoadSettings ( ) {
         playerOnlyPerfectBlock = config.GetBool ( "Script" , "PlayerOnlyPerfectBlock" , playerOnlyPerfectBlock );
         useNewBalanceMeleeScaling = config.GetBool ( "Script" , "NewMeleeScaling" , useNewBalanceMeleeScaling );
         adjustXPReceive = config.GetBool ( "Script" , "AdjustXPReceive" , adjustXPReceive );
+
+        PerfectBlockDamageMult = config.GetFloat ( "Script" , "PerfectBlockDamageMult" , PerfectBlockDamageMult );
+        PowerAttackArmorPen = config.GetFloat ( "Script" , "PowerAttackArmorPen" , PowerAttackArmorPen );
+        QuickAttackArmorRes = config.GetFloat ( "Script" , "QuickAttackArmorRes" , QuickAttackArmorRes );
+        SpecialAttackArmorPen = config.GetFloat ( "Script" , "SpecialAttackArmorPen" , SpecialAttackArmorPen );
+        NPCStrengthMultiplicator = config.GetFloat ( "Script" , "NPCStrengthMultiplicator" , NPCStrengthMultiplicator );
+        NPCStrengthCorrection = config.GetFloat ( "Script" , "NPCStrengthCorrection" , NPCStrengthCorrection );
+
         NPCDamageReductionMultiplicator = config.GetFloat ( "Script" , "NPCDamageReductionMultiplicator" , NPCDamageReductionMultiplicator );
         poiseThreshold = config.GetInt ( "Script" , "PoiseThreshold" , poiseThreshold );
         staminaRecoveryDelay = config.GetU32 ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
@@ -375,7 +383,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Damager is transformed player or NPC
     else if ( DamagerOwner.Navigation.IsValid ( ) )
     {
-        GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 ) * 2.0f - startSTR * 0.5f; //STR Bonus Real
+        GEInt iStrength = ScriptAdmin.CallScriptFromScript ( "GetStrength" , &DamagerOwner , &None , 0 ) * NPCStrengthMultiplicator + NPCStrengthCorrection; //STR Bonus Real
         if ( iStrength < 10 )
             iStrength = 10;
         //std::cout << "STR NPC: " << iStrength << "\tDamager: " << Damager.GetName() << "\tOwner: " << DamagerOwner.GetName() << "\n";
@@ -482,6 +490,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         && ( DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_1H
             || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_2H
             || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_Axe
+            || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_Pickaxe
             || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_Fist
             || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_Staff
             || DamagerOwner.GetWeapon ( GETrue ).Interaction.GetUseType ( ) == gEUseType_Halberd ) ) {
@@ -517,6 +526,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
     
     FinalDamage2 = FinalDamage - aProtection;
+    if ( FinalDamage2 < 0 )
+        FinalDamage2 = 0;
     FinalDamage2 = static_cast< GEInt >( ( FinalDamage2 - FinalDamage2 * ( pProtection / 100.0f ) ) );
     /*
     * Default Protection!
@@ -583,8 +594,8 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     case gEAction_QuickAttack:
     case gEAction_QuickAttackR:
     case gEAction_QuickAttackL:
-        //Quickattacken sind weniger effektiv gegen Starke NPC oder hohe Rüstung (7.5%)
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 0.575f - FinalDamage * 0.075f );
+        //Quickattacken sind weniger effektiv gegen Starke NPC oder hohe Rüstung (5%)
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * (1.0f + QuickAttackArmorRes) - FinalDamage * QuickAttackArmorRes ) / 2;
         break;
 
         // Angreifer benutzt Powerattacke
@@ -595,19 +606,19 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyStatePosition> ( ) == 2 )
         {
             //Starke Attacken ignorieren 10 % Rüstung
-            FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.80f + FinalDamage * 0.20f);
+            FinalDamage2 = static_cast< GEInt >( FinalDamage2 * (1.0f - PowerAttackArmorPen) + FinalDamage * PowerAttackArmorPen ) * 2;
         }
         break;
 
         // Angreifer benutzt Hack-Attacke
         //   => Schaden = Schaden * 2
     case gEAction_HackAttack:
-        // Hackattacken ignorieren 15 % Rüstung
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.70f + FinalDamage * 0.30f );
+        // Hackattacken ignorieren 12.5 % Rüstung
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * ( 1.0f - SpecialAttackArmorPen ) + FinalDamage * SpecialAttackArmorPen ) * 2;
         break;
     }
     if ( victimDamageReceiver->GetVulnerableState ( ) == 2 ) {
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 2 );
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * PerfectBlockDamageMult );
         if ( HitForce >= 3 ) {
             HitForce = static_cast< gEHitForce >( 4 );
         }
@@ -643,7 +654,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
     if ( Victim == Player )
         Victim.Effect.StopEffect ( GETrue );
-
+    //std::cout << "state: " << Victim.Routine.GetCurrentState ( ) << "\tTime: " << Victim.Routine.GetStateTime ( ) << "\n";
     // Parade Magic
     if ( Damager.Projectile.IsValid ( ) && IsSpellContainerNB ( Damager ) )
     {
@@ -705,10 +716,12 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         }
     }
     // Can parade meele?
-    else if ( !Victim.NPC.IsFrozen ( ) 
+    else if ( !Victim.NPC.IsFrozen ( )
         && ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 )
+        || ( Victim.Routine.GetStateTime ( ) < 0.1f && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade )
+            //This can maybe a good feature , when registering attacks right in the beginning
         || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && GetHeldWeaponCategoryNB (Victim) == gEWeaponCategory_Melee
-            && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectileNB ( Damager ) && !IsSpellContainerNB ( Damager )) ))
+            && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectileNB ( Damager ) && !IsSpellContainerNB ( Damager )) )) 
     {
         // Changed to Damage Numbers after Defenses
         GEInt FinalDamage3 = FinalDamage / -2;
@@ -718,11 +731,11 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             if ( Victim != Player || !Victim.Inventory.IsSkillActive ( "Perk_Shield_2" ) )
             {
                 // Weicht von "Detaillierte Schadenberechnung" ab, dort wird ein Faktor von 2/3 anstatt 0.5 beschrieben.
-                FinalDamage3 *= 0.5f;
+                FinalDamage3 *= 0.6f;
             }
             else
             {
-                FinalDamage3 *= 0.3f;
+                FinalDamage3 *= 0.4f;
             }
         }
 
@@ -969,11 +982,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
     if ( ScriptAdmin.CallScriptFromScript ( "CanBeDiseased" , &Victim , &Damager , 0 ) )
     {
-        if ( Damager.GetName ( ).Contains ( "Fist" ) 
-            || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction>() == gEAction_HackAttack 
-            || DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction_PierceAttack ) {
-            Victim.NPC.EnableStatusEffects ( gEStatusEffect_Diseased , GETrue );
-        }
+        Victim.NPC.EnableStatusEffects ( gEStatusEffect_Diseased , GETrue );
     }
 
     if ( ScriptAdmin.CallScriptFromScript ( "CanFreeze" , &Victim , &Damager , FinalDamage2 ) )

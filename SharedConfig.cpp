@@ -31,7 +31,13 @@ GEBool enableNewMagicAiming = GETrue;
 GEBool enableAOEDamage = GETrue;
 std::vector<bCString> AOENames = {};
 
-GEFloat NPCDamageReductionMultiplicator = 0.5;
+GEFloat PerfectBlockDamageMult = 2.0f;
+GEFloat PowerAttackArmorPen = 0.1f;
+GEFloat QuickAttackArmorRes = 0.05f;
+GEFloat SpecialAttackArmorPen = 0.125f;
+GEFloat NPCStrengthMultiplicator = 1.8f;
+GEFloat NPCStrengthCorrection = -50.0f;
+GEFloat NPCDamageReductionMultiplicator = 0.5f;
 GEInt poiseThreshold = -2;
 GEFloat npcArenaSpeedMultiplier = 1.1;
 GEFloat npcWeaponDamageMultiplier = 0.15;

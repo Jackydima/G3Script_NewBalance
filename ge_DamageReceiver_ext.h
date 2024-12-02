@@ -4,7 +4,7 @@
 #include "util/Hook.h"
 #include "util/Util.h"
 #include "util/Module.h"
-
+#include "ge_DamageReceiver.h"
 #include "Script.h"
 #include "Game.h"
 

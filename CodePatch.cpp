@@ -69,6 +69,17 @@ void PatchCode ( ) {
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb51d6 ) , 0x90 , 0xb51db - 0xb51d6 ); // Remove Jump for Hackattack and PierceAttack Compare
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb51db ) , 0xEB , 1 ); // JMP always
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51cd ) , 0xb51dc - 0xb51cd , currProt , &newProt );
+
+    /**
+    * Remove the limitation to target friendly NPCs via quick-patch
+    * This is important for Attacks with Fist (especially for Transformed PC_Hero) 
+    * Fists had no CollisionShapes, and therefore could not get registered
+    * They only hit the "Current Target"
+    */
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xaa5e6 ) , 0xaa5eb - 0xaa5e6 , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( ( LPVOID )RVA_ScriptGame ( 0xaa5e6 ) , 0x90 , 3 ); // Remove cmp Instr.
+    memset ( ( LPVOID )RVA_ScriptGame ( 0xaa5e9 ) , 0xEB , 1 ); // Change jne (0x75) to jmp (0xEB)
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xaa5e6 ) , 0xaa5eb - 0xaa5e6 , currProt , &newProt );
     
     /**
     * Adjust the QualityBonuses
@@ -101,5 +112,4 @@ void PatchCode ( ) {
     memset ( ( LPVOID )RVA_Game ( 0xa3fba ) , 0x00 , sizeof ( &wornMalusString ) );
     memcpy ( ( LPVOID )RVA_Game ( 0xa3fba ) , &wornMalusString , sizeof ( &wornMalusString ) );
     VirtualProtect ( ( LPVOID )RVA_Game ( 0xa3fba ) , sizeof ( &wornMalusString ) , currProt , &newProt );
-
 }

@@ -290,7 +290,8 @@ GEInt UpdateHitPointsOnTick ( Entity p_entity ) {
 		GEInt maxHealth = p_entity.PlayerMemory.GetHitPointsMax ( );
 		retVal += static_cast< GEInt >( maxHealth * 0.01 );
 	}
-	else if ( !p_entity.IsPlayer ( ) && getPowerLevel ( p_entity ) >= 50 ) {
+	else if ( !p_entity.IsPlayer ( ) && p_entity.Party.AccessProperty<PSParty::PropertyPartyMemberType>() != gEPartyMemberType_Summoned
+		&& getPowerLevel ( p_entity ) >= bossLevel ) {
 		GEInt maxHealth = p_entity.DamageReceiver.GetProperty<PSDamageReceiver::PropertyHitPointsMax> ( );
 		retVal += static_cast< GEInt >( maxHealth * 0.01 );
 	}
@@ -322,18 +323,13 @@ GEInt UpdateHitPointsOnTick ( Entity p_entity ) {
 
 GEInt GE_STDCALL CanParade ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs )
 {
-	INIT_SCRIPT_EXT ( Victim , Damager );
-	Entity DamagerOwner = Damager.Interaction.GetOwner ( );
-	if ( DamagerOwner == None && Damager.Navigation.IsValid ( ) )
-	{
-		DamagerOwner = Damager;
-	}
+	INIT_SCRIPT_EXT ( Victim , DamagerOwner );
 
-	GEBool canParadeMoveOf = GetScriptAdmin ( ).CallScriptFromScript ( "CanParadeMoveOf" , &Victim , &Damager , 0 );
+	GEBool canParadeMoveOf = GetScriptAdmin ( ).CallScriptFromScript ( "CanParadeMoveOf" , &Victim , &DamagerOwner , 0 );
 	GEBool isMonsterDamager = !GetScriptAdmin ( ).CallScriptFromScript ( "IsHumanoid" , &DamagerOwner , &None , 0 );
 	GEBool victimInParade = GetScriptAdmin ( ).CallScriptFromScript ( "IsInParadeMode" , &Victim , &None , 0 );
 	gEAction victimAction = Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( );
-	gEAction damagerAction = Damager.Routine.GetProperty<PSRoutine::PropertyAction> ( );
+	gEAction damagerAction = DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( );
 
 	/*
 		Special Request Change
@@ -356,7 +352,8 @@ GEInt GE_STDCALL CanParade ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEnt
 	}
 	if ( victimInParade && victimAction != gEAction_HackAttack && victimAction != gEAction_PierceAttack
 		&& victimAction != gEAction_WhirlAttack && victimAction != gEAction_FinishingAttack
-		&& isMonsterDamager && (weaponLevel >= 2 || (!isBigMonster(DamagerOwner) && !Damager.GetName().Contains("Fist")) )
+		&& isMonsterDamager && (weaponLevel >= 2 || (!isBigMonster(DamagerOwner) 
+			&& DamagerOwner.GetWeapon ( GETrue ) != None && !DamagerOwner.GetWeapon(GETrue).GetName ( ).Contains ( "Fist" ) ) )
 		&& ( damagerAction != gEAction_PierceAttack || CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , Victim ) )
 		&& ( damagerAction != gEAction_HackAttack || victimHolding2HWeap ) ) {
 		if ( Victim.IsInFOV ( DamagerOwner ) ) {
@@ -463,10 +460,10 @@ GEInt GE_STDCALL MagicTransform ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSe
 	typedef void ( *Func2 )( Entity );
 	Func1 func1 = ( Func1 )RVA_ScriptGame ( 0x2e50 );
 	Func2 func2 = ( Func2 )RVA_ScriptGame ( 0x7a00 );
-	//func1 ( leftHand , rightHand , spawnedEntity );
+	func1 ( leftHand , rightHand , spawnedEntity );
 	func2 ( spawnedEntity );
 
-	//spawnedEntity.Routine.SetTask ( "PS_Melee" );
+	spawnedEntity.Routine.SetTask ( "PS_Melee" );
 
 	return 1;
 }
@@ -1058,6 +1055,8 @@ void HookFunctions ( ) {
 	else {
 		Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript , &CanFreezeAddition , mCBaseHook::mEHookType_OnlyStack );
 	}
+	static mCFunctionHook Hook_CanBePoisoned;
+	Hook_CanBePoisoned.Hook ( GetScriptAdminExt ( ).GetScript ( "CanBePoisoned" )->m_funcScript , &CanBePoisoned );
 
 	Hook_AddHitPoints
 		.Prepare ( RVA_ScriptGame ( 0x35b50 ) , &AddHitPoints )

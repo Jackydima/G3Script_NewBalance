@@ -78,6 +78,7 @@
     <ClInclude Include="MyGUI.h" />
     <ClInclude Include="Projectile_PS.h" />
     <ClInclude Include="ContactIterator.h" />
+    <ClInclude Include="ge_DamageReceiver.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Shared\util\Logging.inl">

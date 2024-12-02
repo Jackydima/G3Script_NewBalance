@@ -285,6 +285,41 @@ GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entit
     return GEFalse;
 }
 
+GEInt CanBePoisoned ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+    INIT_SCRIPT_EXT ( Victim , Damager );
+
+    if ( GetScriptAdmin ( ).CallScriptFromScript ( "IsEvil" , &Victim , &None , 0 ) ) {
+        return 0;
+    }
+
+    if ( Damager.Magic.IsValid ( ) ) {
+        return 1;
+    }
+
+    if ( !Damager.IsItem ( ) || !( Damager.Item.GetQuality ( ) & gEItemQuality_Poisoned ) ) {
+        return 0;
+    }
+
+    if ( !a_iArgs && Damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( ) == 2
+        && !IsNormalProjectileNB ( Damager )  ) {
+        return 0;
+    }
+
+    GEInt Random = Entity::GetRandomNumber ( 100 );
+    if ( Victim.IsPlayer ( ) ) {
+        if ( Victim.Inventory.IsSkillActive ( "Perk_ImmuneToPoison" ) && Random > 20 ) {
+            return 0;
+        }
+        return 1;
+    }
+
+    if ( Random > 20 
+        && ( getPowerLevel ( Victim ) >= uniqueLevel || Victim.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( ) == gEPoliticalAlignment_Ass ) )
+        return 0;
+    return 1;
+}
+
+
 GEBool IsNormalProjectileNB ( Entity& p_damager ) {
     //std::cout << "Projectilename: " << p_damager.GetName ( ) << std::endl;
     //std::cout << "Projectile?: " << p_damager.Projectile.IsValid() << std::endl;
@@ -343,7 +378,7 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     switch ( playerUseType ) {
     case gEUseType_1H:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_3" ) ) )
-            level = 3;
+            level = 2;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
             level = 1;
         if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , p_entity )
@@ -353,21 +388,22 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     case gEUseType_2H:
     case gEUseType_Axe:
     case gEUseType_Halberd:
+    case gEUseType_Pickaxe:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_3" ) ) )
-            level = 3;
+            level = 2;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Axe_2" ) ) )
             level = 1;
         break;
     case gEUseType_Staff:
         if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_3" ) ) )
-            level = 3;
+            level = 2;
         else if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Staff_2" ) ) )
             level = 1;
         break;
     case gEUseType_Cast:
         GEInt playerInt = p_entity.PlayerMemory.GetIntelligence ( );
         if ( playerInt > 199 ) 
-            level = 3;
+            level = 2;
         else if ( playerInt > 99 ) 
             level = 1;
         break;
@@ -375,7 +411,9 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStrength" , &p_entity , &None , 0 ) >= 250 ) {
         level += 1;
     }
-    if ( p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) > 49 )
+    if ( p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) >= 35 ) // TODO: Add configValue for that
+        level += 1;
+    if ( p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) >= 60 )
         level += 1;
     //std::cout << "Returned PCHERO Level: " << level << "\n";
     return level; // or level
@@ -576,7 +614,7 @@ GEU32 GetPoisonDamage ( Entity& attacker ) {
     }
 
     GEInt level = getPowerLevel ( attacker );
-    poisonDamage = static_cast< GEInt >( level * 0.1 ) + 2;
+    poisonDamage = static_cast< GEInt >( level * 0.1 ) + 3;
     return poisonDamage;
 }
 
@@ -593,11 +631,11 @@ GEInt getWeaponLevelNB ( Entity& p_entity ) {
         }
         if ( CheckHandUseTypesNB ( gEUseType_None , gEUseType_1H , p_entity ) ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_3" ) ) )
-                return 3;
-            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
                 return 2;
-            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1" ) ) )
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_2" ) ) )
                 return 1;
+            if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1" ) ) )
+                return 0;
         }
         if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , p_entity ) ) {
             if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_1H_1H_2" ) ) )
