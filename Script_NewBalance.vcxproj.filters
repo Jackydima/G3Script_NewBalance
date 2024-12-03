@@ -79,10 +79,14 @@
     <ClInclude Include="Projectile_PS.h" />
     <ClInclude Include="ContactIterator.h" />
     <ClInclude Include="ge_DamageReceiver.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Shared\util\Logging.inl">
       <Filter>util</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Script_NewBalance.rc" />
   </ItemGroup>
 </Project>

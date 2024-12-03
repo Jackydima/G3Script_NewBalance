@@ -996,12 +996,12 @@ void OnTouch ( eCEntity* p_entity , eCContactIterator* p_contactIterator ) {
 	eCEntity* eCE = *( eCEntity** )( ( DWORD )This + 0xC );
 	gCInteraction_PS* interaction = ( gCInteraction_PS* )eCE->GetPropertySet ( eEPropertySetType_Interaction );
 	gCDamage_PS* damage = ( gCDamage_PS* )eCE->GetPropertySet ( eEPropertySetType_Damage );
+	PSDamage damagePS = damage;
 	Entity owner = interaction->GetOwner ( ).GetEntity ( );
 	for each ( bCString entry in AOENames ) {
-		if ( entry != "" && eCE->GetName ( ).Contains ( entry ) ) {
-			//std::cout << entry << "\n";
+		if ( entry != "" && eCE->GetName ( ).Contains ( entry.GetText() ) ) {
 			This->SetTouchBehavior ( bTPropertyContainer< gEProjectileTouchBehavior> ( gEProjectileTouchBehavior_KillSelf ) );
-			bCVector loc = p_contactIterator->GetAvgCollisionPosition ( );
+			/*bCVector loc = p_contactIterator->GetAvgCollisionPosition ( );
 			//std::cout << "Location: x= " << loc.AccessX ( ) << "\ty= " << loc.AccessY ( )
 			//    << "\tz= " << loc.AccessZ ( ) << "\n";
 			bCMatrix pos = bCMatrix ( 0.0 );
@@ -1025,7 +1025,28 @@ void OnTouch ( eCEntity* p_entity , eCContactIterator* p_contactIterator ) {
 			gEDamageType damageType = damagePS.GetProperty<PSDamage::PropertyDamageType> ( );
 			spawn.Damage.AccessProperty<PSDamage::PropertyDamageType> ( ) = damageType;
 			//std::cout << "DamageType = " << damageType << "\n";
-			//eCE->EnableDeactivation ( GETrue ); //good one!
+			//eCE->EnableDeactivation ( GETrue ); //good one!*/
+			bCVector loc = p_contactIterator->GetAvgCollisionPosition ( );
+			bCMatrix pos = bCMatrix ( 0.0 );
+			pos.SetToTranslation ( loc );
+			Template templateSpawn = Template(eCE->GetTemplateID());
+			if ( !templateSpawn.IsValid ( ) ) {
+				print ( "templateSpawn invalid \n" );
+				return;
+			}
+			Entity spawn = Entity::Spawn ( templateSpawn , pos );
+			print ( "%s Created\n" , spawn.GetName ( ).GetText ( ) );
+			spawn.Interaction.SetOwner ( owner );
+			spawn.Interaction.SetSpell ( interaction->GetSpell ( ).GetEntity ( ) );
+			GEInt damageAmount = damagePS.GetProperty<PSDamage::PropertyDamageAmount> ( );
+			if ( owner.Routine.GetProperty<PSRoutine::PropertyAction>() == gEAction_PowerCast )
+				damageAmount *= 2; // TODO: DamageManaMultiplier
+			damageAmount *= damagePS.GetProperty<PSDamage::PropertyDamageHitMultiplier> ( );
+			spawn.Damage.AccessProperty<PSDamage::PropertyDamageAmount> ( ) = damageAmount;
+			GEInt manaUsed = damagePS.GetProperty<PSDamage::PropertyManaUsed> ( );
+			spawn.Damage.AccessProperty< PSDamage::PropertyManaUsed> ( ) = manaUsed;
+			DoAOEDamage ( spawn , Entity ( p_entity ) );
+			spawn.Decay ( );
 			eCE->EnablePicking ( GEFalse , GEFalse ); //Also really good!
 			return;
 		}
@@ -1040,7 +1061,7 @@ void HookFunctions ( ) {
 			.Hook ( );
 	}
 
-	if ( /*enableAOEDamage*/ GEFalse) {
+	if ( enableAOEDamage ) {
 		Hook_OnTouch
 			.Prepare ( RVA_Game ( 0x152650 ) , &OnTouch , mCBaseHook::mEHookType_ThisCall )
 			.Hook ( );

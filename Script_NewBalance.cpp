@@ -64,7 +64,7 @@ void LoadSettings ( ) {
         enableNewMagicAiming = config.GetBool ( "Script" , "EnableNewMagicAiming" , enableNewMagicAiming );
         enableAOEDamage = config.GetBool ( "Script" , "EnableAOEDamage" , enableAOEDamage );
         bCString AOENamesString = config.GetString ( "Script" , "AOENames" , "" );
-        AOENames = splitTobCStrings ( AOENamesString.GetText ( ) , ';' );
+        AOENames = splitTobCStrings ( AOENamesString.GetText ( ) , ',' );
         bossLevel = config.GetU32 ( "Script" , "BossLevelCap" , bossLevel );
         uniqueLevel = config.GetU32 ( "Script" , "UniqueLevelCap" , uniqueLevel );
         eliteLevel = config.GetU32 ( "Script" , "EliteLevelCap" , eliteLevel );
@@ -116,14 +116,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     auto damagerOwnerDamageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( DamagerOwner.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
     auto victimDamageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( Victim.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
 
-    for each ( bCString entry in AOENames ) {
-        if ( entry != "" && Damager.GetName ( ).Contains ( entry ) ) {
-            Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageAmount> ( ) = 0;
-            std::cout << "DamagerName Ignored: " << Damager.GetName ( ) << "\n";
-            return gEAction_Stumble;
-        }
-    }
-    std::cout << "DamagerName: " << Damager.GetName ( ) << "\n";
+    //std::cout << "DamagerName: " << Damager.GetName ( ) << "\n";
 
     /**
     * Workaround: Changed in the FixResetAll() the Trigger of Weapons when functions like all Stumble + PipiStumble get called it would still register Weaponhits 
@@ -173,7 +166,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     
     // Calc weapon damage (WAF-SCHD)
     GEI32 iDamageAmount = Damager.Damage.GetProperty<PSDamage::PropertyDamageAmount> ( );
-    std::cout << "DamageAmount in LogicalDamage: " << iDamageAmount << "\n";
+    //std::cout << "DamageAmount in LogicalDamage: " << iDamageAmount << "\n";
     GEFloat fDamageMultiplier = Damager.Damage.GetProperty<PSDamage::PropertyDamageHitMultiplier> ( );
     const GEInt iWeaponDamage = static_cast< GEInt >( fDamageMultiplier * iDamageAmount );
     bCString VictimItemTemplateName = Victim.Inventory.GetTemplateItem(Victim.Inventory.FindStackIndex ( gESlot_RightHand )).GetName();
@@ -1034,9 +1027,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         return DamagerOwnerAction;
     }
 
-    if ( /*GetHeldWeaponCategory ( Victim ) != gEWeaponCategory_None && */ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 )) //Geändert
+    if ( GetHeldWeaponCategoryNB ( Victim ) != gEWeaponCategory_None && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 ))
     {
-        if ( HitForce >= 4 /* && GetHeldWeaponCategory ( Victim ) == gEWeaponCategory_Melee */) //Remove
+        if ( HitForce >= 4 /* && GetHeldWeaponCategoryNB ( Victim ) == gEWeaponCategory_Melee */) //Remove
         {
             Victim.Routine.FullStop ( );
             Victim.Routine.SetTask ( "ZS_SitKnockDown" );

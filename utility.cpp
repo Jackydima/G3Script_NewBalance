@@ -20,6 +20,28 @@ std::vector<bCString> splitTobCStrings ( const std::string str , char delim ) {
     return result;
 }
 
+void DoAOEDamage ( Entity& p_damager , Entity& p_victim ) {
+    auto entityList = p_damager.GetEntitiesByDistance ( );
+    //print("ListNum: %d\n",entityList.GetCount ( ));
+    for ( GEInt i = 0; i < entityList.GetCount ( ); i++ ) {
+        Entity entry = entityList.GetAt ( i );
+        //print ( "Entry Name: %s\n",entry.GetName().GetText ( ) );
+        GEFloat distance = p_damager.GetDistanceTo ( entry );
+        //print ( "Distance: %f\n" , distance );
+        if ( distance > 1000 )
+            break;
+        if ( !entry.Navigation.IsValid ( ) || entry.IsDead ( ) || entry.IsDown ( ) || entry == p_damager.GetOwner ( )
+            || entry.Party.GetPartyLeader ( ) == p_damager.GetOwner ( )
+            || entry == p_victim ) {
+            continue;
+        }
+
+        GEInt damageAmount = p_damager.Damage.GetProperty<PSDamage::PropertyDamageAmount>() * ( 1 - ( distance / 1000 ) );
+        //print ( "DoDamage !! to %s\n",entry.GetName().GetText() );
+        entry.DoDamage ( p_damager , damageAmount , p_damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( ) );
+    }
+}
+
 // SDK Function
 gEWeaponCategory GetHeldWeaponCategoryNB ( Entity const& a_Entity )
 {

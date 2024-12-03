@@ -94,6 +94,7 @@
     <ClInclude Include="me_propertymacros.h" />
     <ClInclude Include="MyGUI.h" />
     <ClInclude Include="Projectile_PS.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="SharedConfig.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="Script_NewBalance.h" />
@@ -129,6 +130,9 @@
     <ProjectReference Include="..\..\Shared\Asmjit\Asmjit.vcxproj">
       <Project>{32a1be07-45f2-4b54-9cf0-992dffc8d06a}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Script_NewBalance.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -9,6 +9,11 @@
 #include "util/Util.h"
 #include "SharedConfig.h"
 
+#define print(format, ...) std::fprintf(stdout, format, __VA_ARGS__)
+#ifndef DEBUG
+#define print(format, ...) ;
+#endif
+
 enum VulnerabilityStatus {
 	VulnerabilityStatus_IMMUNE = 0,
 	VulnerabilityStatus_REGULAR = 1,
@@ -27,6 +32,7 @@ enum WarriorType {
 
 
 std::vector<bCString> splitTobCStrings ( const std::string str , char delim );
+void DoAOEDamage ( Entity& p_damager , Entity& p_victim );
 GEInt getPowerLevel ( Entity& p_entity );
 gEWeaponCategory GetHeldWeaponCategoryNB ( Entity const& a_Entity );
 Template getProjectile ( Entity& p_entity , gEUseType p_rangedWeaponType );

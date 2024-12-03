@@ -98,7 +98,7 @@ void InitGUI ( ) {
     CFFGFCWnd* dW = ( ( CFFGFCWnd* )0 )->GetDesktopWindow ( );
 #ifdef DEBUG
     bCRect test = bCRect ( 411 , 30 , 411 + 200 , 30 + 19 );
-    myView.Create ( NULL , 0x10 , test , dW , UINT_MAX );
+    myView.Create ( "" , 0x10 , test , dW , UINT_MAX );
     myView.OnInitDialog ( );
 #endif
 
@@ -107,7 +107,7 @@ void InitGUI ( ) {
     GEI32 iX = ( ClientRect.GetWidth ( ) - 40 ) / 2;
     GEI32 iY = ( ClientRect.GetHeight ( ) - 40 ) / 2;
     bCRect DrawBox ( iX , iY , iX + 40 , iY + 40 );
-    crossHair.Create ( NULL , 0x10 , DrawBox , dW , UINT_MAX );
+    crossHair.Create ( "" , 0x10 , DrawBox , dW , UINT_MAX );
     CFFGFCBitmap bitMap;
     bitMap.Create ( "G3_HUD_CrossHair.tga" );
     auto handle = bitMap.GetHandle ( );
