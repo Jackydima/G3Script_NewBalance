@@ -18,6 +18,7 @@ extern GEU32 uniqueLevel;
 extern GEU32 eliteLevel;
 extern GEU32 warriorLevel;
 extern GEU32 noviceLevel;
+extern GEU32 KnockDownThreshold;
 
 extern GEBool useNewBalanceMagicWeapon;
 extern GEBool useNewStaminaRecovery;

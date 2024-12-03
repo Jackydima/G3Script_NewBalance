@@ -70,6 +70,7 @@ void LoadSettings ( ) {
         eliteLevel = config.GetU32 ( "Script" , "EliteLevelCap" , eliteLevel );
         warriorLevel = config.GetU32 ( "Script" , "WarriorLevelCap" , warriorLevel );
         noviceLevel = config.GetU32 ( "Script" , "NoviceLevelCap" , noviceLevel );
+        KnockDownThreshold = config.GetU32 ( "Script" , "KnockDownThreshold" , KnockDownThreshold );
     }
 }
 
@@ -1029,7 +1030,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
     if ( GetHeldWeaponCategoryNB ( Victim ) != gEWeaponCategory_None && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 ))
     {
-        if ( HitForce >= 4 /* && GetHeldWeaponCategoryNB ( Victim ) == gEWeaponCategory_Melee */) //Remove
+        if ( HitForce >= KnockDownThreshold /* && GetHeldWeaponCategoryNB ( Victim ) == gEWeaponCategory_Melee */) //Remove
         {
             Victim.Routine.FullStop ( );
             Victim.Routine.SetTask ( "ZS_SitKnockDown" );

@@ -14,6 +14,7 @@ GEU32 uniqueLevel = 45;
 GEU32 eliteLevel = 35;
 GEU32 warriorLevel = 30;
 GEU32 noviceLevel = 20;
+GEU32 KnockDownThreshold = 5;
 
 GEBool useNewBalanceMagicWeapon = GEFalse;
 GEBool useNewStaminaRecovery = GETrue;
