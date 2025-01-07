@@ -52,6 +52,7 @@ GEU32 startDEX = 100;
 GEDouble shootVelocity = 300;
 GEDouble NPC_AIM_INACCURACY = 0.40;
 GEDouble ATTACK_REACH_MULTIPLIER = 1.75;
+GEU32 elementalPerkBonusResistance = 35;
 
 GEU32 blessedBonus = 10;
 GEU32 sharpBonus = 10;

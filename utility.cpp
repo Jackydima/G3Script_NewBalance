@@ -42,6 +42,69 @@ void DoAOEDamage ( Entity& p_damager , Entity& p_victim ) {
     }
 }
 
+GEBool IsInActiveAttack ( Entity& p_entity ) {
+    gEAction currentAction = p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( );
+    switch ( currentAction ) {
+    case gEAction_Attack:
+    case gEAction_PowerAttack:
+    case gEAction_HackAttack:
+    case gEAction_PierceAttack:
+    //case gEAction_QuickAttack:
+    //case gEAction_QuickAttackR:
+    //case gEAction_QuickAttackL:
+    case gEAction_SimpleWhirl:
+    case gEAction_WhirlAttack:
+    case gEAction_SprintAttack:
+        return GETrue;
+    default:
+        return GEFalse;
+    }
+}
+
+void PartyMonsterSpawn ( Entity& p_summoner , Template& p_summonTemplate , GEInt p_int1 , GEInt p_int2 ) {
+    Entity Spell = p_summoner.Interaction.GetSpell ( );
+    bCMatrix pose = p_summoner.GetPose ( );
+    Entity Spawn = Entity::Spawn ( p_summonTemplate , pose );
+    bCMatrix newPose;
+    Spawn.Interaction.SetOwner ( p_summoner );
+    if ( !Spawn.FindSpawnPose ( newPose , p_summoner , GETrue , p_int1 )) {
+        Spawn.Kill ( );
+        print ( "Did not find SpawnPose in PartyMonsterSpawn!\n" );
+        return;
+    }
+    Spawn.MoveTo ( newPose );
+
+    if ( p_int2 == 0 ) {
+        bCString effectString = Spell.Magic.GetProperty<PSMagic::PropertyEffectTargetCast> ( );
+        EffectSystem::StartEffect ( effectString , Spawn );
+    }
+
+    p_summoner.Party.Add ( Spawn );
+    Spawn.Party.AccessProperty<PSParty::PropertyWaiting>() = GEFalse;
+    Spawn.Party.AccessProperty<PSParty::PropertyPartyMemberType>() = gEPartyMemberType_Summoned;
+    Spawn.Dialog.AccessProperty<PSDialog::PropertyPartyEnabled> ( ) = GEFalse;
+    if ( p_summoner.IsPlayer ( ) ) {
+        Spawn.Dialog.AccessProperty<PSDialog::PropertyPartyEnabled> ( ) = GETrue;
+        Spawn.Routine.FullStop ( );
+        Spawn.Routine.SetTask ( "ZS_FollowPlayer" );
+    }
+    else {
+        gEPoliticalAlignment pA = p_summoner.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( );
+        Spawn.NPC.AccessProperty<PSNpc::PropertyPoliticalAlignment> ( ) = pA;
+        Entity Player = Entity::GetPlayer ( );
+        if ( Player != None ) {
+            if ( Player.GetDistanceTo ( Spawn ) <= 2000.0f ) {
+                gEAttackReason aR = p_summoner.NPC.GetProperty<PSNpc::PropertyAttackReason> ( );
+                GetScriptAdmin ( ).CallScriptFromScript ( "AssessTarget" , &Spawn , &Player , aR );
+                return;
+            }
+            Spawn.Kill ( );
+        }
+    }
+
+
+}
+
 // SDK Function
 gEWeaponCategory GetHeldWeaponCategoryNB ( Entity const& a_Entity )
 {
@@ -387,6 +450,7 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
             return 3;
         if ( npcLevel <= bossLevel ) // >65
             return 4;
+        // Legendary NPCs > 65
         return 5;
     }
 
@@ -483,9 +547,6 @@ GEInt GetActionWeaponLevelNB ( Entity& p_damager , gEAction p_action ) {
 
 GEInt GetShieldLevelBonusNB ( Entity& p_entity ) {
     //std::cout << "Name in GetShieldLevelBonus: " << p_entity.GetName ( ) << std::endl;
-    if ( p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction::gEAction_GetUpParade ) {
-        return 2;
-    }
     GEInt level = GetSkillLevelsNB ( p_entity );
     GEInt stackIndex = p_entity.Inventory.FindStackIndex ( gESlot::gESlot_LeftHand );
     gEUseType useType = p_entity.Inventory.GetUseType ( stackIndex );
@@ -497,6 +558,9 @@ GEInt GetShieldLevelBonusNB ( Entity& p_entity ) {
         }
         else if ( getPowerLevel ( p_entity ) >= eliteLevel )
             level += 1;
+    }
+    if ( p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction::gEAction_GetUpParade ) {
+        level += 2;
     }
     return level;
 }

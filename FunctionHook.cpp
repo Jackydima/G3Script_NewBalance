@@ -632,6 +632,11 @@ GEInt GE_STDCALL GetProtectionHUD ( gCScriptProcessingUnit* a_pSPU , Entity* a_p
 	if ( !Self.IsPlayer ( ) || Self.NPC.IsTransformed ( ) ) {
 		protection = GetScriptAdmin ( ).CallScriptFromScript ( "GetLevelMax" , a_pSelfEntity , &None );
 		protection *= npcArmorMultiplier;
+		GEInt stackIndexLeftHand = Self.Inventory.FindStackIndex ( gESlot::gESlot_LeftHand );
+		GEInt stackIndexLeftHandBack = Self.Inventory.FindStackIndex ( gESlot::gESlot_BackLeft );
+		if ( Self.Inventory.GetUseType ( stackIndexLeftHand ) == gEUseType_Shield || Self.Inventory.GetUseType ( stackIndexLeftHandBack ) == gEUseType_Shield ) {
+			protection *= 1.25;
+		}
 		protection /= playerArmorMultiplier;
 		return protection;
 	}
@@ -758,7 +763,9 @@ static GEU32 getLastStaminaUsageTime ( bCString iD ) {
 
 static mCFunctionHook Hook_StaminaUpdateOnTick;
 GEInt StaminaUpdateOnTick ( Entity p_entity ) {
-	const GEInt standardStaminaRecovery = staminaRecoveryPerTick;
+	//const GEInt standardStaminaRecovery = staminaRecoveryPerTick;
+	//TODO Change that again
+	const GEInt standardStaminaRecovery = static_cast<GEInt>((GEFloat)GetScriptAdmin().CallScriptFromScript("GetStaminaPointsMax",&p_entity,&None) * 0.05f);
 	GEInt retStaminaDelta = 0;
 
 	if ( p_entity.IsPlayer ( ) && p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction::gEAction_Aim ) {
@@ -772,21 +779,21 @@ GEInt StaminaUpdateOnTick ( Entity p_entity ) {
 	}
 
 	// For Now Only for player!
-	if ( p_entity == Entity::GetPlayer ( ) && ( p_entity.IsSprinting ( ) || ( p_entity.IsSwimming ( ) && *( BYTE* )RVA_Executable ( 0x27FD2 ) ) ) ) {
+	if ( p_entity.IsPlayer() && ( p_entity.IsSprinting ( ) || ( p_entity.IsSwimming ( ) && *( BYTE* )RVA_Executable ( 0x27FD2 ) ) ) ) {
 		if ( p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( ) == gESpecies_Bloodfly ) {
 			return StaminaUpdateOnTickHelper ( p_entity , -1 );
 		}
 
 		if ( eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing ) {
 			if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Sprinter" ) )
-				|| ( p_entity != Entity::GetPlayer ( ) && getPowerLevel ( p_entity ) >= 30 ) )
+				|| ( p_entity != Entity::GetPlayer ( ) && getPowerLevel ( p_entity ) >= warriorLevel ) )
 				return StaminaUpdateOnTickHelper ( p_entity , -4 );
 			return StaminaUpdateOnTickHelper ( p_entity , -8 );
 		}
 		if ( p_entity.Inventory.IsSkillActive ( Template ( "Perk_Sprinter" ) )
-		   || ( p_entity != Entity::GetPlayer ( ) && getPowerLevel ( p_entity ) >= 30 ) )
+		   || ( p_entity != Entity::GetPlayer ( ) && getPowerLevel ( p_entity ) >= warriorLevel ) )
 			return StaminaUpdateOnTickHelper ( p_entity , -5 );
-			return StaminaUpdateOnTickHelper ( p_entity , -10 );
+		return StaminaUpdateOnTickHelper ( p_entity , -10 );
 	}
 
 	if ( p_entity.IsJumping ( ) )
@@ -1051,10 +1058,62 @@ void OnTouch ( eCEntity* p_entity , eCContactIterator* p_contactIterator ) {
 			return;
 		}
 	}
-
 }
-void HookFunctions ( ) {
 
+void MagicPartyMemberRemover ( Entity p_summoner ) {
+	auto partyMembers = p_summoner.Party.GetMembers ( GEFalse );
+	if ( partyMembers.GetCount ( ) == 0 ) {
+		return;
+	}
+
+	for ( GEInt i = 0; i < partyMembers.GetCount ( ); i++ ) {
+		Entity ent = partyMembers.GetAt ( i );
+		gEPartyMemberType pMT = ent.Party.GetProperty<PSParty::PropertyPartyMemberType> ( );
+
+		if ( pMT == gEPartyMemberType_Controlled ) {
+			bCUnicodeString partyMemberName = ent.GetFocusName ( );
+			eCLocString printText = eCLocString("GO_ControlDismiss");
+			bCUnicodeString visualText = printText.GetString ( );
+			visualText.Replace ( L"$(name)" , partyMemberName );
+			gui2.PrintGameMessage ( visualText , gEGameMessageType_Failure );
+			ent.Party.SetPartyLeader ( None );
+			if ( ent.Navigation.IsInProcessingRange ( ) ) {
+				ent.Routine.ContinueRoutine ( );
+			}
+			break;
+		}
+
+		if ( pMT == gEPartyMemberType_Summoned ) {
+			ent.Routine.FullStop ( );
+			ent.Routine.SetTask ( "ZS_RagDollDead" );
+			ent.Party.SetPartyLeader ( None );
+			ent.Party.AccessProperty<PSParty::PropertyWaiting>() = GEFalse;
+			if ( !ent.Navigation.IsInProcessingRange ( ) ) {
+				ent.Routine.AccessProperty<PSRoutine::PropertyAIMode> ( ) = gEAIMode_Dead;
+			}
+			break;
+		}
+	}
+}
+
+GEInt MagicSummonArmyOfDarkness ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEInt p_args ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+	GEInt amount = 4;
+	GEInt position = 1;
+	using MSR = void( * )( Entity p_entity);
+	MSR MonsterSpawnRemover = (MSR) RVA_ScriptGame ( 0x54770 );
+	MonsterSpawnRemover ( Self );
+	PartyMonsterSpawn ( Self , Template ( "LivingAncestor_Summon_01" ) , position++ , 0 );
+
+	for ( GEInt i = 0; i < amount; i++ ) {
+		PartyMonsterSpawn ( Self , Template ( "Skeleton" ) , position++ , 0 );
+		PartyMonsterSpawn ( Self , Template ( "SlaveZombie" ) , position++ , 0 );
+	}
+
+	return 1;
+}
+
+void HookFunctions ( ) {
 	if ( enableNewMagicAiming ) {
 		Hook_MagicProjectile
 			.Prepare ( RVA_ScriptGame ( 0x52db0 ) , &MagicProjectile )
@@ -1066,6 +1125,14 @@ void HookFunctions ( ) {
 			.Prepare ( RVA_Game ( 0x152650 ) , &OnTouch , mCBaseHook::mEHookType_ThisCall )
 			.Hook ( );
 	}
+
+	static mCFunctionHook Hook_MagicSummonArmyOfDarkness;
+	Hook_MagicSummonArmyOfDarkness.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSummonArmyOfDarkness" )->m_funcScript , &MagicSummonArmyOfDarkness );
+
+	static mCFunctionHook Hook_MagicPartyMemberRemover;
+	Hook_MagicPartyMemberRemover.Prepare ( RVA_ScriptGame ( 0x54770 ) , &MagicPartyMemberRemover )
+		.Hook ( );
+		
 
 	static mCFunctionHook Hook_CanBurn;
 	GetScriptAdmin ( ).LoadScriptDLL ( "Script_G3Fixes.dll" );

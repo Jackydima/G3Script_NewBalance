@@ -56,6 +56,7 @@ extern GEU32 startDEX;
 extern GEDouble shootVelocity;
 extern GEDouble NPC_AIM_INACCURACY;
 extern GEDouble ATTACK_REACH_MULTIPLIER;
+extern GEU32 elementalPerkBonusResistance;
 
 extern GEU32 blessedBonus;
 extern GEU32 sharpBonus;
@@ -68,7 +69,6 @@ extern GEU32 wornPercentageMalus;
 //Const Data for Usage:
 static const GEDouble PROJECTILEMULTIPLICATOR = 27.777778;
 static const GEDouble* npcArmorMultiplierPtr = &npcArmorMultiplier;
-static GEU32 elementalPerkBonusResistance = 35;
 static const GEDouble* shootVelocityPtr = &shootVelocity;
 static GEFloat animationSpeedBonusMid = 1.5f;
 static GEFloat animationSpeedBonusHigh = 2.0f;
