@@ -48,6 +48,9 @@
       <AdditionalUsingDirectories>DEBUG 1</AdditionalUsingDirectories>
       <PreprocessorDefinitions>DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -84,6 +87,7 @@
     <ClInclude Include="..\..\Shared\util\Logging.h" />
     <ClInclude Include="..\..\Shared\util\Memory.h" />
     <ClInclude Include="..\..\Shared\util\Module.h" />
+    <ClInclude Include="..\..\Shared\util\ScriptUtil.h" />
     <ClInclude Include="..\..\Shared\util\Util.h" />
     <ClInclude Include="CodePatch.h" />
     <ClInclude Include="ContactIterator.h" />

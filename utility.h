@@ -7,6 +7,7 @@
 #include "Script.h"
 #include <map>
 #include "util/Util.h"
+#include "util/ScriptUtil.h"
 #include "SharedConfig.h"
 
 #define print(format, ...) std::fprintf(stdout, format, __VA_ARGS__)
@@ -39,7 +40,7 @@ GEInt getPowerLevel ( Entity& p_entity );
 gEWeaponCategory GetHeldWeaponCategoryNB ( Entity const& a_Entity );
 Template getProjectile ( Entity& p_entity , gEUseType p_rangedWeaponType );
 GEBool isBigMonster ( Entity& p_monster );
-GEInt getMonsterHyperArmorPoints ( Entity& p_monster , gEAction p_monsterAction );
+GEInt getHyperArmorPoints ( Entity& p_monster , gEAction p_monsterAction );
 GEInt IsEvil ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs );
 GEInt CanBurn ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs );
 GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs );

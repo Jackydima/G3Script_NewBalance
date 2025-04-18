@@ -43,22 +43,28 @@ void DoAOEDamage ( Entity& p_damager , Entity& p_victim ) {
 }
 
 GEBool IsInActiveAttack ( Entity& p_entity ) {
+    if ( p_entity == None || !p_entity.Routine.IsValid() )
+        return GEFalse;
     gEAction currentAction = p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( );
+    eCVisualAnimation_PS* va;
+    bCString ptrCurrentMotionDescription;
     switch ( currentAction ) {
     case gEAction_Attack:
     case gEAction_PowerAttack:
     case gEAction_HackAttack:
     case gEAction_PierceAttack:
-    //case gEAction_QuickAttack:
-    //case gEAction_QuickAttackR:
-    //case gEAction_QuickAttackL:
     case gEAction_SimpleWhirl:
     case gEAction_WhirlAttack:
     case gEAction_SprintAttack:
-        return GETrue;
+        va = GetPropertySet< eCVisualAnimation_PS> ( p_entity.GetGameEntity ( ) , eEPropertySetType_Animation );
+        ptrCurrentMotionDescription = va->GetMotionDesc ( ( eCWrapper_emfx2Actor::eEMotionType )0 ).GetMotionFilename ( );
+        print ( "%sEntity -> Motion:%s\n" , p_entity.GetName ( ).GetText ( ) , ptrCurrentMotionDescription.GetText ( ) );
+        if ( ptrCurrentMotionDescription.Contains( "Hit" ) )
+            return GETrue;
     default:
         return GEFalse;
     }
+    return GEFalse;
 }
 
 void PartyMonsterSpawn ( Entity& p_summoner , Template& p_summonTemplate , GEInt p_int1 , GEInt p_int2 ) {
@@ -119,7 +125,6 @@ GEInt getPowerLevel ( Entity& p_entity ) {
     GEInt level = static_cast<GEInt>(p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) + player.NPC.GetProperty<PSNpc::PropertyLevel> ( ));
     if ( level > static_cast<GEInt>( p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( )) )
         level = static_cast<GEInt>( p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( ));
-    //std::cout << "PowerLevel of: " << p_entity.GetName ( ) << ":\t" << level << "\n";
     if ( useAlwaysMaxLevel )
         level = static_cast< GEInt >( p_entity.NPC.GetProperty<PSNpc::PropertyLevelMax> ( ));
     return level;
@@ -178,12 +183,10 @@ Template getProjectile ( Entity& p_entity ,gEUseType p_rangedWeaponType ) {
     return projectile;
 }
 
-GEInt getMonsterHyperArmorPoints ( Entity& p_monster , gEAction p_monsterAction ) {
-    if ( p_monsterAction != gEAction_PowerAttack && p_monsterAction != gEAction_SprintAttack )
+GEInt getHyperArmorPoints ( Entity& p_entity , gEAction p_Action ) {
+    if ( p_Action != gEAction_PowerAttack && p_Action != gEAction_SprintAttack && p_Action != gEAction_HackAttack )
         return 0;
-    if ( !isBigMonster ( p_monster ) )
-        return 2;
-    switch ( p_monster.NPC.GetProperty<PSNpc::PropertySpecies> ( ) ) {
+    switch ( p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( ) ) {
     case gESpecies_Demon:
     case gESpecies_Ogre:
         return 3;
@@ -199,7 +202,7 @@ GEInt getMonsterHyperArmorPoints ( Entity& p_monster , gEAction p_monsterAction 
     case gESpecies_Golem:
         return 4;
     default:
-        return 0;
+        return 2;
     }
 }
 
@@ -283,9 +286,6 @@ GEInt CanBurn ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity*
     if ( random >= 100 ) {
         return GEFalse;
     }
-
-    //std::cout << "In CanBurn:\tDamageType: " << damageType << "\trandom: " << random
-        //<< "\nProjectile.IsValid: " << p_damager.Projectile.IsValid () << "\titemQuality: " << itemQuality << "\n";
     if ( !p_damager.Projectile.IsValid ( ) ) {
         if ( damageType != gEDamageType_None ) {
             if ( damageType == gEDamageType_Fire ) {
@@ -316,10 +316,10 @@ GEInt CanFreeze ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entit
     INIT_SCRIPT_EXT ( p_victim , p_damager );
     UNREFERENCED_PARAMETER ( a_iArgs );
     if ( p_damager == None ) return GEFalse;
-    if ( p_damager.GetName ( ) == "Mis_IceBlock" )
+    if ( p_victim == None ) return GEFalse;
+    if ( p_damager.GetName ( ) == "Mis_IceBlock" && p_victim.NPC.GetProperty<PSNpc::PropertySpecies> ( ) != gESpecies_IceGolem )
         return GETrue;
     gESpecies victimSpecies = p_victim.NPC.GetProperty<PSNpc::PropertySpecies> ( );
-    //std::cout << "Projectilename: " << p_damager.GetName ( ) << std::endl;
     switch ( victimSpecies ) {
     case gESpecies_Golem:
     case gESpecies_Demon:
@@ -390,45 +390,34 @@ GEInt CanBePoisoned ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , E
         return 0;
     }
 
-    GEInt Random = Entity::GetRandomNumber ( 100 );
     if ( Victim.IsPlayer ( ) ) {
-        if ( Victim.Inventory.IsSkillActive ( "Perk_ImmuneToPoison" ) && Random > 20 ) {
+        if ( Victim.Inventory.IsSkillActive ( "Perk_ImmuneToPoison" ) ) {
             return 0;
         }
         return 1;
     }
 
-    if ( Random > 20 
-        && ( getPowerLevel ( Victim ) >= uniqueLevel || Victim.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( ) == gEPoliticalAlignment_Ass ) )
+    if ( Victim.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( ) == gEPoliticalAlignment_Ass )
         return 0;
     return 1;
 }
 
 
 GEBool IsNormalProjectileNB ( Entity& p_damager ) {
-    //std::cout << "Projectilename: " << p_damager.GetName ( ) << std::endl;
-    //std::cout << "Projectile?: " << p_damager.Projectile.IsValid() << std::endl;
     return p_damager.Projectile.IsValid ( ) &&
         p_damager.Interaction.GetSpell ( ) == None;
 }
 
 GEBool IsSpellContainerNB ( Entity& p_damager ) {
-    //std::cout << "Spell?: " << p_damager.Interaction.GetSpell ( ).GetName ( )
-    //    << "\n" << p_damager.Interaction.GetOwner ( ).GetName() << std::endl;
     return p_damager.Interaction.GetSpell ( ) != None;
 }
 
 GEBool IsMagicProjectileNB ( Entity& p_damager ) {
-    //std::cout << "Projectilename: " << p_damager.GetName ( ) << std::endl;
-    //std::cout << "Projectile?: " << p_damager.Projectile.IsValid ( ) << std::endl;
     return p_damager.Projectile.IsValid ( ) &&
         p_damager.Interaction.GetSpell ( ) != None;
 }
 
 GEBool CheckHandUseTypesNB ( gEUseType p_lHand , gEUseType p_rHand , Entity& entity ) {
-    //std::cout << "Left: " << p_lHand << "Right: " << p_rHand
-       // << "\nItem Left: " << entity.Inventory.GetItemFromSlot ( gESlot_LeftHand ).GetName ( )
-       // << "\nItem Right" << entity.Inventory.GetItemFromSlot ( gESlot_RightHand ).GetName ( ) << std::endl;
     return ( entity.Inventory.GetItemFromSlot ( gESlot_LeftHand )
         .Interaction.GetUseType ( ) == p_lHand &&
         entity.Inventory.GetItemFromSlot ( gESlot_RightHand )
@@ -439,7 +428,6 @@ GEBool CheckHandUseTypesNB ( gEUseType p_lHand , gEUseType p_rHand , Entity& ent
 GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     if ( p_entity != Entity::GetPlayer ( ) ) {
         GEU32 npcLevel = getPowerLevel(p_entity);
-        //std::cout << "Entity: " << p_entity.GetName ( ) << "\tLevel: " << npcLevel << std::endl;
         if ( npcLevel <= noviceLevel ) // 20
             return 0;
         if ( npcLevel <= warriorLevel ) // 30
@@ -457,9 +445,6 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     GEInt level = 0;
     GEInt playerRightHandStack = p_entity.Inventory.FindStackIndex ( gESlot_RightHand );
     gEUseType playerUseType = p_entity.Inventory.GetUseType ( playerRightHandStack );
-
-    //std::cout << "Player in GetSkillLevels" << std::endl;
-    // maybe even use a switch case here...
 
     switch ( playerUseType ) {
     case gEUseType_1H:
@@ -497,11 +482,11 @@ GEInt GetSkillLevelsNB ( Entity& p_entity ) {
     if ( GetScriptAdmin ( ).CallScriptFromScript ( "GetStrength" , &p_entity , &None , 0 ) >= 250 ) {
         level += 1;
     }
+    // TODO: Find other stats to use for these Skill Types
     if ( p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) >= 35 ) // TODO: Add configValue for that
         level += 1;
     if ( p_entity.NPC.GetProperty<PSNpc::PropertyLevel> ( ) >= 60 )
         level += 1;
-    //std::cout << "Returned PCHERO Level: " << level << "\n";
     return level; // or level
 }
 
@@ -546,7 +531,6 @@ GEInt GetActionWeaponLevelNB ( Entity& p_damager , gEAction p_action ) {
 }
 
 GEInt GetShieldLevelBonusNB ( Entity& p_entity ) {
-    //std::cout << "Name in GetShieldLevelBonus: " << p_entity.GetName ( ) << std::endl;
     GEInt level = GetSkillLevelsNB ( p_entity );
     GEInt stackIndex = p_entity.Inventory.FindStackIndex ( gESlot::gESlot_LeftHand );
     gEUseType useType = p_entity.Inventory.GetUseType ( stackIndex );
@@ -571,8 +555,6 @@ VulnerabilityStatus DamageTypeEntityTestNB ( Entity& p_victim , Entity& p_damage
         return VulnerabilityStatus::VulnerabilityStatus_IMMUNE;
     gEDamageType damageType = p_damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
     gESpecies victimSpecies = p_victim.NPC.GetProperty<PSNpc::PropertySpecies> ( );
-    //std::cout << "Damager in DamageTypeEntityTest: " << p_damager.GetName ( ) << "\tvictimspecies: " << victimSpecies 
-        //<< "\tDamageType: " << damageType << std::endl;
     switch ( damageType ) {
     case gEDamageType_None:
         break;
@@ -679,10 +661,6 @@ GEInt GetHyperActionBonus ( gEAction p_action )
     case gEAction_Summon:
     case gEAction_FlameSword:
         return 4;
-    case gEAction_PowerAttack:
-    case gEAction_SprintAttack:
-    case gEAction_HackAttack:
-        return 0; // Change someday
     case gEAction_Heal:
         return 0;
     default:
@@ -816,7 +794,7 @@ GEInt speciesRightHand ( Entity p_entity ) {
     case gESpecies_ScorpionKing:
         return p_entity.Inventory.AssureItems ( "Fist" , gEItemQuality::gEItemQuality_Poisoned , 1 );
     case gESpecies_Ogre:
-        return p_entity.Inventory.AssureItems ( "It_Axe_OgreMorningStar_01" , /*gEItemQuality::gEItemQuality_Worn*/0 , 1 );
+        return p_entity.Inventory.AssureItems ( "It_Axe_OgreMorningStar_01" , gEItemQuality::gEItemQuality_Worn , 1 );
     case gESpecies_IceGolem:
         return p_entity.Inventory.AssureItems ( "Fist" , gEItemQuality::gEItemQuality_Frozen , 1 );
     case gESpecies_Stalker:
@@ -836,14 +814,11 @@ GEBool IsInRecovery ( Entity& p_entity ) {
         return GEFalse;
 
     bCString* ptrCurrentMotionDescription = ( bCString* )( *( GEU32* )( ( GEU32 )va + 0xE8 ) + 0x4 );
-    //std::cout << "String Ani: " << ptrCurrentMotionDescription << "\n";
     GEInt firstP = ptrCurrentMotionDescription->Find ( "_" , 4 );
     GEInt secondP = ptrCurrentMotionDescription->Find ( "_" , 12 );
     bCString test = "";
     ptrCurrentMotionDescription->GetWord ( 4 , "_" , test , GETrue , GETrue );
-    //std::cout << "Test: " << test.GetText ( ) << "\n";
     if ( test.Contains ( "P0" ) && ptrCurrentMotionDescription->Contains ( "Recover" ) ) {
-        //std::cout << "String Ani: " << ptrCurrentMotionDescription->GetText ( ) << "\n";
         return GETrue;
     }
     return GEFalse;

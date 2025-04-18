@@ -80,6 +80,9 @@
     <ClInclude Include="ContactIterator.h" />
     <ClInclude Include="ge_DamageReceiver.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="..\..\Shared\util\ScriptUtil.h">
+      <Filter>util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Shared\util\Logging.inl">

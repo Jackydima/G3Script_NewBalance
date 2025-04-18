@@ -277,7 +277,7 @@ GEInt UpdateHitPointsOnTick ( Entity p_entity ) {
 		retVal -= poisonDamage;
 	}
 	if ( p_entity.NPC.IsFrozen ( ) ) {
-		retVal -= 1;
+		retVal -= 2;
 	}
 
 	if ( p_entity.NPC.IsInMagicBarrier ( ) )
@@ -406,17 +406,13 @@ GEInt GE_STDCALL OnTick ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity
 		GEDouble staminaPercantage = ( GEDouble ) Self.DamageReceiver.GetProperty<PSDamageReceiver::PropertyStaminaPoints> ( ) / ( GEDouble ) Self.DamageReceiver.GetProperty<PSDamageReceiver::PropertyStaminaPointsMax> ( );
 		if ( Self.GetDistanceTo ( Self.NPC.GetCurrentTarget ( ) ) > 450.0 && staminaPercantage >= 0.2 )
 			Self.SetMovementMode ( gECharMovementMode_Sprint );
-		else
-			;//Self.SetMovementMode ( gECharMovementMode_Run );
 	}
 
-	if ( Self == Entity::GetPlayer ( ) && IsPlayerInCombat ( ) ) {
+	if ( Self.IsPlayer() && IsPlayerInCombat ( ) ) {
 		Self.NPC.AccessProperty<PSNpc::PropertyCombatState> ( ) = 1;
-		//std::cout << "IsInCombat Suka\n";
 	}
-	else if ( Self == Entity::GetPlayer ( ) ) {
+	else if ( Self.IsPlayer() ) {
 		Self.NPC.AccessProperty<PSNpc::PropertyCombatState> ( ) = 0;
-		//std::cout << "Unluck\n";
 	}
 
 	return Hook_OnTick.GetOriginalFunction ( &OnTick )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
@@ -453,7 +449,7 @@ GEInt GE_STDCALL MagicTransform ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSe
 	GEInt leftHand = speciesLeftHand ( spawnedEntity );
 	GEInt rightHand = speciesRightHand ( spawnedEntity );
 
-	//spawnedEntity.Inventory.HoldStacks ( leftHand , rightHand );
+	spawnedEntity.Inventory.HoldStacks ( leftHand , rightHand );
 
 	//TODO extra Functions
 	typedef void ( *Func1 )( GEInt, GEInt, Entity );
@@ -717,6 +713,138 @@ GEInt GE_STDCALL GetProtectionHUD ( gCScriptProcessingUnit* a_pSPU , Entity* a_p
 	}
 }
 
+// TODO: Not FINISHED
+/*
+GEInt GE_STDCALL GetProtectionHUDAbsolute ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+	if ( Self == None )
+		return 0;
+	GEInt protection = 0;
+	bCString protectionCheckString = "";
+
+	gEDamageType damageType = Other.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
+	if ( Other == None ) {
+		switch ( a_iArgs ) {
+		case 13:
+			damageType = gEDamageType_Lightning;
+			break;
+		case 14:
+			damageType = gEDamageType_Ice;
+			break;
+		case 15:
+			damageType = gEDamageType_Fire;
+			break;
+		case 16:
+			damageType = gEDamageType_Missile;
+			break;
+		case 17:
+			damageType = gEDamageType_Impact;
+			break;
+		default:
+			damageType = gEDamageType_Blade;
+		}
+	}
+
+	if ( !Self.IsPlayer ( ) || Self.NPC.IsTransformed ( ) ) {
+		protection = GetScriptAdmin ( ).CallScriptFromScript ( "GetLevelMax" , a_pSelfEntity , &None );
+		protection *= npcArmorMultiplier;
+		GEInt stackIndexLeftHand = Self.Inventory.FindStackIndex ( gESlot::gESlot_LeftHand );
+		GEInt stackIndexLeftHandBack = Self.Inventory.FindStackIndex ( gESlot::gESlot_BackLeft );
+		if ( Self.Inventory.GetUseType ( stackIndexLeftHand ) == gEUseType_Shield || Self.Inventory.GetUseType ( stackIndexLeftHandBack ) == gEUseType_Shield ) {
+			protection *= 1.25;
+		}
+		protection /= playerArmorMultiplier;
+	}
+
+	GEBool playerNT = Self.IsPlayer ( ) && !Self.NPC.IsTransformed ( );
+	// Maybe Use EAB here
+	eCApplication::GetInstance ( ).GetEngineSetup ( ).AlternativeBalancing;
+	switch ( damageType ) {
+	case gEDamageType_Blade:
+		if ( playerNT )
+			protection = Self.PlayerMemory.GetProtectionBlades ( );
+		protectionCheckString = "PROT_BLADE";
+		break;
+	case gEDamageType_Impact:
+		if ( playerNT )
+			protection = Self.PlayerMemory.GetProtectionImpact ( );
+		protectionCheckString = "PROT_IMPACT";
+		break;
+	case gEDamageType_Missile:
+		if ( playerNT )
+			protection = Self.PlayerMemory.GetProtectionMissile ( );
+		protectionCheckString = "PROT_MISSILE";
+		break;
+	case gEDamageType_Fire:
+		if ( playerNT )
+			protection = Self.PlayerMemory.GetProtectionFire ( );
+		if ( Self.Inventory.IsSkillActive ( "Perk_ResistHeat" ) ) {
+			protection += elementalPerkBonusResistance;
+		}
+		protectionCheckString = "PROT_FIRE";
+		break;
+	case gEDamageType_Ice:
+		if ( playerNT )
+			protection = Self.PlayerMemory.GetProtectionIce ( );
+		if ( Self.Inventory.IsSkillActive ( "Perk_ResistCold" ) ) {
+			protection += elementalPerkBonusResistance;
+		}
+		protectionCheckString = "PROT_ICE";
+		break;
+	case gEDamageType_Lightning:
+		if ( playerNT )
+			protection = Self.PlayerMemory.GetProtectionLightning ( );
+		protectionCheckString = "PROT_LIGHTNING";
+	}
+	gCItem_PS* item;
+	if ( playerNT ) {
+		GEInt stackIndexBody = Self.Inventory.FindStackIndex ( gESlot_Body );
+		Entity bodyEntity = Self.Inventory.GetTemplateItem ( stackIndexBody );
+		if ( bodyEntity == None ) {
+			return protection;
+		}
+		item = ( gCItem_PS* )bodyEntity.Item.m_pEngineEntityPropertySet;
+	}
+	else {
+		Entity itemTemp = Self.Inventory.GetDefaultItemFromSlot ( gESlot_Body );
+		item = ( gCItem_PS* )itemTemp.Item.m_pEngineEntityPropertySet;
+	}
+	GEInt itemProt = 0;
+	if ( item->GetModAttrib1Tag ( ) == protectionCheckString ) {
+		itemProt = item->GetModAttrib1Value ( );
+	}
+	else if ( item->GetModAttrib2Tag ( ) == protectionCheckString ) {
+		itemProt = item->GetModAttrib2Value ( );
+	}
+	else if ( item->GetModAttrib3Tag ( ) == protectionCheckString ) {
+		itemProt = item->GetModAttrib3Value ( );
+	}
+	else if ( item->GetModAttrib4Tag ( ) == protectionCheckString ) {
+		itemProt = item->GetModAttrib4Value ( );
+	}
+	else if ( item->GetModAttrib5Tag ( ) == protectionCheckString ) {
+		itemProt = item->GetModAttrib5Value ( );
+	}
+	else if ( item->GetModAttrib6Tag ( ) == protectionCheckString ) {
+		itemProt = item->GetModAttrib6Value ( );
+		//Add the Robe Protection twice to the player if Skill is active
+		if ( bodyEntity.Item.IsRobe ( ) && Self.Inventory.IsSkillActive ( "Perk_LightArmor" ) ) {
+			//elemental damage is more effective for robes
+			if ( damageType == gEDamageType_Fire || damageType == gEDamageType_Ice || damageType == gEDamageType_Lightning ) {
+				protection += ( itemProt * 1.5 );
+			}
+			else {
+				protection += itemProt;
+			}
+		}
+		// Add 50% Extra Protection for ONLY the Body Armor now, maybe add helmet aswell
+		else if ( Self.Inventory.IsSkillActive ( "Perk_HeavyArmor" ) ) {
+			protection += ( itemProt * 0.5 );
+		}
+		return protection;
+	}
+}*/
+
 static mCFunctionHook Hook_GetCurrentLevel;
 GEInt GE_STDCALL GetCurrentLevel ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs ) {
 	INIT_SCRIPT_EXT ( Self , Other );
@@ -763,9 +891,8 @@ static GEU32 getLastStaminaUsageTime ( bCString iD ) {
 
 static mCFunctionHook Hook_StaminaUpdateOnTick;
 GEInt StaminaUpdateOnTick ( Entity p_entity ) {
-	//const GEInt standardStaminaRecovery = staminaRecoveryPerTick;
-	//TODO Change that again
-	const GEInt standardStaminaRecovery = static_cast<GEInt>((GEFloat)GetScriptAdmin().CallScriptFromScript("GetStaminaPointsMax",&p_entity,&None) * 0.05f);
+	const GEInt standardStaminaRecovery = staminaRecoveryPerTick + GetScriptAdmin().CallScriptFromScript("GetStaminaPointsMax",&p_entity,&None,0) / 100;
+	//TODO Change that again;
 	GEInt retStaminaDelta = 0;
 
 	if ( p_entity.IsPlayer ( ) && p_entity.Routine.GetProperty<PSRoutine::PropertyAction> ( ) == gEAction::gEAction_Aim ) {
@@ -881,7 +1008,10 @@ GEInt GetAttitudeSummons ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntit
 static mCFunctionHook Hook_CanFreeze;
 GEInt CanFreezeAddition ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
 	// Fix for new Spell
-	if ( a_pOtherEntity->GetName ( ) == "Mis_IceBlock" )
+	INIT_SCRIPT_EXT ( Victim , Damager );
+	if ( Damager != None
+		&& Damager.GetName ( ) == "Mis_IceBlock"
+		&& Victim.NPC.GetProperty<PSNpc::PropertySpecies>() != gESpecies_IceGolem )
 		return GETrue;
 	return Hook_CanFreeze.GetOriginalFunction ( &CanFreezeAddition )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
 }
@@ -1231,6 +1361,11 @@ void HookFunctions ( ) {
 	//Hook_GetAniName
 	//	.Prepare ( RVA_Game ( 0x16f840 ) , &GetAniName , mCBaseHook::mEHookType_ThisCall )
 	//	.Hook ( );
+}
+
+ME_DEFINE_AND_REGISTER_SCRIPT_AI_FUNCTION ( MenTest )
+{
+	return 0;
 }
 
 /*ME_DEFINE_AND_REGISTER_SCRIPT ( MagicSummonWolfPack )

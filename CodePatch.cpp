@@ -1,10 +1,19 @@
 #include "CodePatch.h"
 
 void PatchCode ( ) {
+
+    DWORD currProt , newProt;
+    /**
+    * New AI Range for Ranged and Magic Attacks
+    */
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x50414 ) , sizeof ( &attackRangeAIPtr ) , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( ( LPVOID )RVA_ScriptGame ( 0x50414 ) , 0x90 , sizeof ( &attackRangeAIPtr ) );
+    memcpy ( ( LPVOID )RVA_ScriptGame ( 0x50414 ) , &attackRangeAIPtr , sizeof ( &attackRangeAIPtr ) );
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x50414 ) , sizeof ( &attackRangeAIPtr ) , currProt , &newProt );
+
     /**
     * New Velocity for bows!
     */
-    DWORD currProt , newProt;
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x86705 ) , sizeof ( &shootVelocityPtr ) , PAGE_EXECUTE_READWRITE , &currProt );
     memset ( ( LPVOID )RVA_ScriptGame ( 0x86705 ) , 0x90 , sizeof ( &shootVelocityPtr ) );
     memcpy ( ( LPVOID )RVA_ScriptGame ( 0x86705 ) , &shootVelocityPtr , sizeof ( &shootVelocityPtr ) );
