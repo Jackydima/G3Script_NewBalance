@@ -61,6 +61,9 @@ extern GEDouble NPC_AIM_INACCURACY;
 extern GEDouble ATTACK_REACH_MULTIPLIER;
 extern GEU32 elementalPerkBonusResistance;
 
+extern GEFloat animationSpeedBonusMid;
+extern GEFloat animationSpeedBonusHigh;
+
 extern GEU32 blessedBonus;
 extern GEU32 sharpBonus;
 extern GEBool useSharpPercentage;
@@ -74,8 +77,8 @@ static const GEDouble PROJECTILEMULTIPLICATOR = 27.777778;
 static const GEDouble* npcArmorMultiplierPtr = &npcArmorMultiplier;
 static const GEDouble* shootVelocityPtr = &shootVelocity;
 static const GEDouble* attackRangeAIPtr = &attackRangeAI;
-static GEFloat animationSpeedBonusMid = 1.5f;
-static GEFloat animationSpeedBonusHigh = 2.0f;
+//static GEFloat animationSpeedBonusMid = 1.5f;
+//static GEFloat animationSpeedBonusHigh = 2.0f;
 
 static char* BONETARGET = "Spine_Spine_1";
 static char* powerAimEffectName = "eff_ani_fight_bow_raise_01";

@@ -56,6 +56,8 @@ GEDouble shootVelocity = 300.0;
 GEDouble NPC_AIM_INACCURACY = 0.40;
 GEDouble ATTACK_REACH_MULTIPLIER = 1.75;
 GEU32 elementalPerkBonusResistance = 35;
+GEFloat animationSpeedBonusMid = 1.5f;
+GEFloat animationSpeedBonusHigh = 2.0f;
 
 GEU32 blessedBonus = 10;
 GEU32 sharpBonus = 10;

@@ -39,6 +39,8 @@ void LoadSettings ( ) {
         NPCStrengthMultiplicator = config.GetFloat ( "Script" , "NPCStrengthMultiplicator" , NPCStrengthMultiplicator );
         NPCStrengthCorrection = config.GetFloat ( "Script" , "NPCStrengthCorrection" , NPCStrengthCorrection );
         elementalPerkBonusResistance = config.GetU32 ( "Script" , "ElementalPerkBonusResistance" , elementalPerkBonusResistance );
+        animationSpeedBonusMid = config.GetFloat ( "Script" , "BowAnimationSpeedBonusMid" , animationSpeedBonusMid );
+        animationSpeedBonusHigh = config.GetFloat ( "Script" , "BowAnimationSpeedBonusHigh" , animationSpeedBonusHigh );
 
         NPCDamageReductionMultiplicator = config.GetFloat ( "Script" , "NPCDamageReductionMultiplicator" , NPCDamageReductionMultiplicator );
         poiseThreshold = config.GetInt ( "Script" , "PoiseThreshold" , poiseThreshold );
