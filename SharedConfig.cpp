@@ -52,6 +52,7 @@ GEDouble playerArmorMultiplier = 0.4;
 GEU32 startSTR = 0;
 GEU32 startDEX = 0;
 GEDouble attackRangeAI = 3000.0;
+GEDouble telekinesisRange = 4000.0;
 GEDouble shootVelocity = 300.0;
 GEDouble NPC_AIM_INACCURACY = 0.40;
 GEDouble ATTACK_REACH_MULTIPLIER = 1.75;

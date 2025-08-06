@@ -56,6 +56,7 @@ extern GEDouble playerArmorMultiplier;
 extern GEU32 startSTR;
 extern GEU32 startDEX;
 extern GEDouble attackRangeAI;
+extern GEDouble telekinesisRange;
 extern GEDouble shootVelocity;
 extern GEDouble NPC_AIM_INACCURACY;
 extern GEDouble ATTACK_REACH_MULTIPLIER;
@@ -77,6 +78,7 @@ static const GEDouble PROJECTILEMULTIPLICATOR = 27.777778;
 static const GEDouble* npcArmorMultiplierPtr = &npcArmorMultiplier;
 static const GEDouble* shootVelocityPtr = &shootVelocity;
 static const GEDouble* attackRangeAIPtr = &attackRangeAI;
+static const GEDouble* telekinesisRangePtr = &telekinesisRange;
 //static GEFloat animationSpeedBonusMid = 1.5f;
 //static GEFloat animationSpeedBonusHigh = 2.0f;
 

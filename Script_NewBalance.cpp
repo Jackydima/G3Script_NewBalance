@@ -51,6 +51,7 @@ void LoadSettings ( ) {
         npcWeaponDamageMultiplier = config.GetFloat( "Script" , "NPCWeaponDamageMultiplier" , npcWeaponDamageMultiplier );
         useNewBowMechanics = config.GetBool ( "Script" , "NewBowMechanics" , useNewBowMechanics );
         attackRangeAI = config.GetFloat ( "Script" , "AttackRangeAI" , attackRangeAI );
+        telekinesisRange = config.GetFloat ( "Script" , "TelekinesisRange" , telekinesisRange );
         shootVelocity = config.GetFloat ( "Script" , "ProjectileVelocity" , shootVelocity );
         NPC_AIM_INACCURACY = config.GetFloat ( "Script" , "NPCAimInaccuracy" , NPC_AIM_INACCURACY );
         ATTACK_REACH_MULTIPLIER = config.GetFloat ( "Script" , "AttackReachMultiplier" , ATTACK_REACH_MULTIPLIER );
@@ -683,7 +684,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             }
         }
 
-        if ( enablePerfectBlock && ( !playerOnlyPerfectBlock || Victim.IsPlayer() ) ) {
+        if ( enablePerfectBlock && GetHeldWeaponCategoryNB( DamagerOwner ) == gEWeaponCategory_Melee && ( !playerOnlyPerfectBlock || Victim.IsPlayer ( ) ) ) {
 
             if ( lastHit > 12 && ( Victim.Routine.GetStateTime ( ) < 0.05
                 || ( DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction != gEAction_HackAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1f ) )
@@ -702,7 +703,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                         EffectSystem::StartEffect ( "eff_col_wh_01_me_me" , Victim );
                     }
                 }
-                EffectSystem::StartEffect ( "parry_sound_01" , Victim );
+                EffectSystem::StartEffect ( "parry_sound_01" , DamagerOwner );
                 if ( !Damager.GetName ( ).Contains ( "Fist" ) ) {
                     DamagerOwner.NPC.SetCurrentAttacker ( Victim );
                     DamagerOwner.Routine.FullStop ( );

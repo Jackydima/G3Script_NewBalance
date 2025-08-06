@@ -1,7 +1,39 @@
 #include "CodePatch.h"
 
-void PatchCode ( ) {
 
+static const BYTE NOP = 0x90;
+
+static void PatchByte ( LPVOID addr , BYTE byte ) {
+    DWORD currProt , newProt;
+    DWORD size = sizeof ( BYTE );
+
+    VirtualProtect ( addr , size , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( addr , NOP , size );
+    memset ( addr , byte , size );
+    VirtualProtect ( addr , size , currProt , &newProt );
+}
+
+static void PatchNewAddr ( LPVOID addr, LPVOID newAddr, DWORD size ) {
+    DWORD currProt , newProt;
+
+    VirtualProtect ( addr , size , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( addr , NOP , size );
+    memcpy ( addr , newAddr , size );
+    VirtualProtect ( addr , size , currProt , &newProt );
+}
+
+static void PatchNOPs ( LPVOID addr , DWORD size ) {
+    DWORD currProt , newProt;
+
+    VirtualProtect ( addr , size , PAGE_EXECUTE_READWRITE , &currProt );
+    memset ( addr , NOP , size );
+    VirtualProtect ( addr , size , currProt , &newProt );
+}
+
+
+// TODO: Clean up this copypasta-crap...
+void PatchCode ( ) {
+    
     DWORD currProt , newProt;
     /**
     * New AI Range for Ranged and Magic Attacks
@@ -10,6 +42,11 @@ void PatchCode ( ) {
     memset ( ( LPVOID )RVA_ScriptGame ( 0x50414 ) , 0x90 , sizeof ( &attackRangeAIPtr ) );
     memcpy ( ( LPVOID )RVA_ScriptGame ( 0x50414 ) , &attackRangeAIPtr , sizeof ( &attackRangeAIPtr ) );
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x50414 ) , sizeof ( &attackRangeAIPtr ) , currProt , &newProt );
+
+    /**
+    * New variable Telekinesis Range Patch
+    */
+    PatchNewAddr ( ( LPVOID )RVA_ScriptGame ( 0x7a6ce ) , &telekinesisRangePtr , sizeof ( &telekinesisRangePtr ) );
 
     /**
     * New Velocity for bows!
