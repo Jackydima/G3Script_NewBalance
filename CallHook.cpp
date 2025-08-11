@@ -1,6 +1,22 @@
 
 #include "CallHook.h"
 
+
+/**
+* Fix the hit detection of the PowerAttack of the Dual 1H PowerAttack
+*/
+static mCCallHook Hook_FixDualOneHanded;
+// gCProcessinUnit at esp+0x2b8
+void FixDualOneHanded ( gCScriptProcessingUnit* p_PSU ) {
+	Entity self = p_PSU->GetSelfEntity ( );
+
+	Entity rightHandWeapon = self.Inventory.GetItemFromSlot ( gESlot_RightHand );
+	rightHandWeapon.TouchDamage.ClearTriggeredList ( );
+
+	Entity leftHandWeapon = self.Inventory.GetItemFromSlot ( gESlot_LeftHand );
+	leftHandWeapon.TouchDamage.ClearTriggeredList ( );
+}
+
 /**
 * Changed the Default Projectile Velocity for NPCs and give them Better Aiming
 */
@@ -165,6 +181,14 @@ void GiveXPPowerlevel ( gCNPC_PS* p_npc ) {
 }
 
 void HookCallHooks ( ) {
+
+	Hook_FixDualOneHanded
+		.Prepare ( RVA_ScriptGame ( 0x482e7 ) , &FixDualOneHanded , mCBaseHook::mEHookType_OnlyStack )
+		.InsertCall ( )
+		.AddPtrStackArg ( 0x2B8 )
+		.RestoreRegister ( )
+		.Hook ( );
+	
 	Hook_CombatMoveScale
 		.Prepare ( RVA_Game ( 0x16b8a3 ) , &CombatMoveScale , mCBaseHook::mEHookType_Mixed , mCRegisterBase::mERegisterType_Ecx )
 		.InsertCall ( )

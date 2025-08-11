@@ -24,6 +24,7 @@ void LoadSettings ( ) {
     }
     if ( config.ReadFile ( "newbalance.ini" ) ) {
         useNewBalanceMagicWeapon = config.GetBool ( "Script" , "UseNewBalanceMagicWeapon" , useNewBalanceMagicWeapon );
+        useHardCoreAttacks = config.GetBool ( "Script" , "useHardCoreAttacks" , useHardCoreAttacks );
         useNewStaminaRecovery = config.GetBool ( "Script" , "UseNewStaminaRecovery" , useNewStaminaRecovery );
         useAlwaysMaxLevel = config.GetBool ( "Script" , "DisableNPCLeveling" , useAlwaysMaxLevel );
         enablePerfectBlock = config.GetBool ( "Script" , "EnablePerfectBlock" , enablePerfectBlock );

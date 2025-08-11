@@ -20,6 +20,7 @@ extern GEU32 warriorLevel;
 extern GEU32 noviceLevel;
 extern GEU32 KnockDownThreshold;
 
+extern GEBool useHardCoreAttacks;
 extern GEBool useNewBalanceMagicWeapon;
 extern GEBool useNewStaminaRecovery;
 extern GEBool useAlwaysMaxLevel;

@@ -8,8 +8,15 @@ static void PatchByte ( LPVOID addr , BYTE byte ) {
     DWORD size = sizeof ( BYTE );
 
     VirtualProtect ( addr , size , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( addr , NOP , size );
     memset ( addr , byte , size );
+    VirtualProtect ( addr , size , currProt , &newProt );
+}
+
+static void PatchBytes ( LPVOID addr , BYTE bytes[] , DWORD size ) {
+    DWORD currProt , newProt;
+
+    VirtualProtect ( addr , size , PAGE_EXECUTE_READWRITE , &currProt );
+    memcpy ( addr , bytes , size );
     VirtualProtect ( addr , size , currProt , &newProt );
 }
 
@@ -33,7 +40,7 @@ static void PatchNOPs ( LPVOID addr , DWORD size ) {
 
 // TODO: Clean up this copypasta-crap...
 void PatchCode ( ) {
-    
+
     DWORD currProt , newProt;
     /**
     * New AI Range for Ranged and Magic Attacks
@@ -47,6 +54,17 @@ void PatchCode ( ) {
     * New variable Telekinesis Range Patch
     */
     PatchNewAddr ( ( LPVOID )RVA_ScriptGame ( 0x7a6ce ) , &telekinesisRangePtr , sizeof ( &telekinesisRangePtr ) );
+
+    /**
+    * NPC Can now just brute Attack you through your KnockdownState! No Chill
+    */
+    if ( useHardCoreAttacks ) {
+        PatchNOPs ( ( LPVOID )RVA_ScriptGame ( 0x4ef24 ) , 3 ); // remove compare instruction
+        PatchByte ( ( LPVOID )RVA_ScriptGame ( 0x4ef27 ) , 0xE9 ); // JMP instruction
+        BYTE kDSB[4] = { 0x9E, 0x00 , 0x00 , 0x00 }; // Relative Jmp address
+        PatchBytes ( ( LPVOID )RVA_ScriptGame ( 0x4ef28 ) , kDSB , 4 );
+        PatchNOPs ( ( LPVOID )RVA_ScriptGame ( 0x4ef2C ) , 1 ); // cleanup
+    }
 
     /**
     * New Velocity for bows!
@@ -102,9 +120,11 @@ void PatchCode ( ) {
     * 0xb51c0 - 0xb51b1
     * Is gEAnimationState Knockdown?
     */
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , PAGE_EXECUTE_READWRITE , &currProt );
+    // OLD
+    /*VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , PAGE_EXECUTE_READWRITE , &currProt );
     memset ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0x90 , 0xb51c0 - 0xb51b1 );
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , currProt , &newProt );
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xb51b1 ) , 0xb51c0 - 0xb51b1 , currProt , &newProt );*/
+    PatchNOPs ( ( LPVOID )RVA_ScriptGame ( 0xb51a2 ) , 0xb51c0 - 0xb51a2 );
 
     /**
     * Remove the Targetlimitation of Pierce- and Hack-Attacks on the Currentarget
