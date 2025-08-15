@@ -21,6 +21,7 @@ extern GEU32 noviceLevel;
 extern GEU32 KnockDownThreshold;
 
 extern GEBool useHardCoreAttacks;
+extern GEBool useDamagingInnosLight;
 extern GEBool useNewBalanceMagicWeapon;
 extern GEBool useNewStaminaRecovery;
 extern GEBool useAlwaysMaxLevel;

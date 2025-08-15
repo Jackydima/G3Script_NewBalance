@@ -17,6 +17,7 @@ GEU32 noviceLevel = 20;
 GEU32 KnockDownThreshold = 5;
 
 GEBool useHardCoreAttacks = GETrue;
+GEBool useDamagingInnosLight = GETrue;
 GEBool useNewBalanceMagicWeapon = GEFalse;
 GEBool useNewStaminaRecovery = GETrue;
 GEBool useAlwaysMaxLevel = GETrue;

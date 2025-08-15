@@ -264,8 +264,6 @@ GEInt UpdateHitPointsOnTick ( Entity p_entity ) {
 		return 0;
 	}
 
-	//std::cout << "Entity: "<< p_entity.GetName() << " --- CombatState: " << p_entity.NPC.GetProperty<PSNpc::PropertyCombatState> ( ) << "\n";
-
 	if ( p_entity.NPC.IsBurning ( ) )
 		retVal -= 5;
 
@@ -413,6 +411,32 @@ GEInt GE_STDCALL OnTick ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity
 	}
 	else if ( Self.IsPlayer() ) {
 		Self.NPC.AccessProperty<PSNpc::PropertyCombatState> ( ) = 0;
+	}
+
+	//std::cout << "Entity: "<< p_entity.GetName() << " --- CombatState: " << p_entity.NPC.GetProperty<PSNpc::PropertyCombatState> ( ) << "\n";
+
+	// Innos lights now actually tries to banish the darkness of beliar :)
+	if ( useDamagingInnosLight 
+		&& Self.Routine.AIMode != gEAIMode_Down
+		&& Self.Routine.AIMode != gEAIMode_Dead
+		&& Self.NPC.Species != gESpecies_Golem
+		&& Self.NPC.Species != gESpecies_IceGolem
+		&& Self.NPC.Species != gESpecies_FireGolem
+		&& !Self.NPC.IsBurning()
+		&& GetScriptAdmin ( ).CallScriptFromScript ( "IsEvil" , &Self , &None ) ) {
+		auto entityList = Self.GetEntitiesByDistance ( );
+		Entity currentEntity;
+		for ( GEInt i = 0; i < entityList.GetCount ( ); i++ ) {
+			currentEntity = entityList.GetAt ( i );
+			print ( "Entity: %s is at distance: %f\n" , currentEntity.GetName ( ) , p_entity.GetDistanceTo ( currentEntity ) );
+			if ( Self.GetDistanceTo ( currentEntity ) > 500 ) break;
+
+			if ( currentEntity.GetName ( ) == "Smn_Light" ) {
+				Self.NPC.EnableStatusEffects ( gEStatusEffect_Burning , GETrue );
+				Self.Effect.StartRuntimeEffect ( "eff_magic_firespell_target_01" );
+				break;
+			}
+		}
 	}
 
 	return Hook_OnTick.GetOriginalFunction ( &OnTick )( a_pSPU , a_pSelfEntity , a_pOtherEntity , a_iArgs );
