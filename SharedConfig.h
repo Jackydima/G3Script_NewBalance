@@ -30,6 +30,7 @@ extern GEBool playerOnlyPerfectBlock;
 extern GEBool useNewBalanceMeleeScaling;
 extern GEBool adjustXPReceive;
 extern GEBool useStaticBlocks;
+extern GEBool useStrengthForCrossbows;
 extern GEBool alternativeProtection;
 extern GEBool useNewBowMechanics;
 extern GEBool enableNPCSprint;

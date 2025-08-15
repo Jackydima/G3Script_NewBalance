@@ -26,6 +26,7 @@ GEBool playerOnlyPerfectBlock = GEFalse;
 GEBool useNewBalanceMeleeScaling = GETrue;
 GEBool adjustXPReceive = GETrue;
 GEBool useStaticBlocks = GEFalse;
+GEBool useStrengthForCrossbows = GEFalse;
 GEBool alternativeProtection = GEFalse;
 GEBool useNewBowMechanics = GETrue;
 GEBool enableNPCSprint = GETrue;

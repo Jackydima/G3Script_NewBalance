@@ -428,7 +428,7 @@ GEInt GE_STDCALL OnTick ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity
 		Entity currentEntity;
 		for ( GEInt i = 0; i < entityList.GetCount ( ); i++ ) {
 			currentEntity = entityList.GetAt ( i );
-			print ( "Entity: %s is at distance: %f\n" , currentEntity.GetName ( ) , p_entity.GetDistanceTo ( currentEntity ) );
+			//print ( "Entity: %s is at distance: %f\n" , currentEntity.GetName ( ) , Self.GetDistanceTo ( currentEntity ) );
 			if ( Self.GetDistanceTo ( currentEntity ) > 500 ) break;
 
 			if ( currentEntity.GetName ( ) == "Smn_Light" ) {

@@ -24,8 +24,8 @@ void LoadSettings ( ) {
     }
     if ( config.ReadFile ( "newbalance.ini" ) ) {
         useNewBalanceMagicWeapon = config.GetBool ( "Script" , "UseNewBalanceMagicWeapon" , useNewBalanceMagicWeapon );
-        useHardCoreAttacks = config.GetBool ( "Script" , "useHardCoreAttacks" , useHardCoreAttacks );
-        useDamagingInnosLight = config.GetBool ( "Script" , "useDamagingInnosLight" , useDamagingInnosLight );
+        useHardCoreAttacks = config.GetBool ( "Script" , "UseHardCoreAttacks" , useHardCoreAttacks );
+        useDamagingInnosLight = config.GetBool ( "Script" , "UseDamagingInnosLight" , useDamagingInnosLight );
         useNewStaminaRecovery = config.GetBool ( "Script" , "UseNewStaminaRecovery" , useNewStaminaRecovery );
         useAlwaysMaxLevel = config.GetBool ( "Script" , "DisableNPCLeveling" , useAlwaysMaxLevel );
         enablePerfectBlock = config.GetBool ( "Script" , "EnablePerfectBlock" , enablePerfectBlock );
@@ -33,6 +33,7 @@ void LoadSettings ( ) {
         useNewBalanceMeleeScaling = config.GetBool ( "Script" , "NewMeleeScaling" , useNewBalanceMeleeScaling );
         adjustXPReceive = config.GetBool ( "Script" , "AdjustXPReceive" , adjustXPReceive );
         useStaticBlocks = config.GetBool ( "Script" , "UseStaticBlocks" , useStaticBlocks );
+        useStrengthForCrossbows = config.GetBool ( "Script" , "UseStrengthForCrossbows" , useStrengthForCrossbows );
 
         PerfectBlockDamageMult = config.GetFloat ( "Script" , "PerfectBlockDamageMult" , PerfectBlockDamageMult );
         PowerAttackArmorPen = config.GetFloat ( "Script" , "PowerAttackArmorPen" , PowerAttackArmorPen );
@@ -298,7 +299,13 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             // Ranged damage
             if ( IsNormalProjectileNB ( Damager ) == GETrue )
             {
-                iAttributeBonusDamage = dexterity / 2;
+                //print ( "UseType Left : %d" , DamagerOwner.Inventory.GetItemFromSlot(gESlot_LeftHand).Interaction.UseType );
+                if ( useStrengthForCrossbows && DamagerOwner.Inventory.GetItemFromSlot ( gESlot_LeftHand ).Interaction.UseType == gEUseType_CrossBow ) {
+                    iAttributeBonusDamage = strength / 2;
+                }
+                else {
+                    iAttributeBonusDamage = dexterity / 2;
+                }
             }
             // Melee damage
             else {
