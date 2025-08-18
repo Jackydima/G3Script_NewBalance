@@ -333,38 +333,60 @@ GEInt GE_STDCALL CanParade ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEnt
 		Special Request Change
 	*/
 
-	gEUseType rightWeaponUseType = Victim.Inventory.GetItemFromSlot ( gESlot_RightHand ).Interaction.GetUseType ( );
+	if ( useExtendedBlocking ) {
 
-	// Special return true for Blocking Hackattacks with a 2H Weapon, Axe, Halbert, Staff
-	GEBool victimHolding2HWeap = IsHoldingTwoHandedWeapon ( Victim );
-	if ( victimHolding2HWeap && victimInParade && damagerAction == gEAction_HackAttack
-		 && victimAction != gEAction_HackAttack && victimAction != gEAction_WhirlAttack && victimAction != gEAction_FinishingAttack ) {
-		if ( Victim.IsInFOV ( DamagerOwner ) ) {
-			return 1;
+		gEUseType rightWeaponUseType = Victim.Inventory.GetItemFromSlot ( gESlot_RightHand ).Interaction.GetUseType ( );
+
+		// Special return true for Blocking Hackattacks with a 2H Weapon, Axe, Halbert, Staff
+		GEBool victimHolding2HWeap = IsHoldingTwoHandedWeapon ( Victim );
+		if ( victimHolding2HWeap && victimInParade && damagerAction == gEAction_HackAttack
+			 && victimAction != gEAction_HackAttack && victimAction != gEAction_WhirlAttack && victimAction != gEAction_FinishingAttack ) {
+			if ( Victim.IsInFOV ( DamagerOwner ) ) {
+				return 1;
+			}
+		}
+		// Special return for Blocking Monsterdamage with a 2H Weapon, Axe, Halbert, Staff and 1H When skilled up
+		GEInt weaponLevel = getWeaponLevelNB ( Victim );
+		if ( isBigMonster ( DamagerOwner ) ) {
+			weaponLevel -= 1;
+		}
+		if ( victimInParade && victimAction != gEAction_HackAttack && victimAction != gEAction_PierceAttack
+			&& victimAction != gEAction_WhirlAttack && victimAction != gEAction_FinishingAttack
+			&& isMonsterDamager && ( weaponLevel >= 2 || ( !isBigMonster ( DamagerOwner )
+				&& DamagerOwner.GetWeapon ( GETrue ) != None && !DamagerOwner.GetWeapon ( GETrue ).GetName ( ).Contains ( "Fist" ) ) )
+			&& ( damagerAction != gEAction_PierceAttack || CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , Victim ) )
+			&& ( damagerAction != gEAction_HackAttack || victimHolding2HWeap ) ) {
+			if ( Victim.IsInFOV ( DamagerOwner ) ) {
+				return 1;
+			}
+		}
+
+		// 1H1H can block PierceAttacks
+		if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , Victim ) && victimInParade
+			 && victimAction != gEAction_PierceAttack && victimAction != gEAction_FinishingAttack
+			&& damagerAction == gEAction_PierceAttack ) {
+			if ( Victim.IsInFOV ( DamagerOwner ) ) {
+				return 1;
+			}
 		}
 	}
-	// Special return for Blocking Monsterdamage with a 2H Weapon, Axe, Halbert, Staff and 1H When skilled up
-	GEInt weaponLevel = getWeaponLevelNB ( Victim );
-	if ( isBigMonster ( DamagerOwner ) ) {
-		weaponLevel -= 1;
-	}
-	if ( victimInParade && victimAction != gEAction_HackAttack && victimAction != gEAction_PierceAttack
-		&& victimAction != gEAction_WhirlAttack && victimAction != gEAction_FinishingAttack
-		&& isMonsterDamager && (weaponLevel >= 2 || (!isBigMonster(DamagerOwner) 
-			&& DamagerOwner.GetWeapon ( GETrue ) != None && !DamagerOwner.GetWeapon(GETrue).GetName ( ).Contains ( "Fist" ) ) )
-		&& ( damagerAction != gEAction_PierceAttack || CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , Victim ) )
-		&& ( damagerAction != gEAction_HackAttack || victimHolding2HWeap ) ) {
-		if ( Victim.IsInFOV ( DamagerOwner ) ) {
-			return 1;
+	else {
+		// Special return for Blocking Monsterdamage with a 2H Weapon, Axe, Halbert, Staff and 1H When skilled up
+		GEBool victimHolding2HWeap = IsHoldingTwoHandedWeapon ( Victim );
+		GEInt weaponLevel = getWeaponLevelNB ( Victim );
+		if ( isBigMonster ( DamagerOwner ) ) {
+			weaponLevel -= 1;
 		}
-	}
-
-	// 1H1H can block Pierceattacks
-	if ( CheckHandUseTypesNB ( gEUseType_1H , gEUseType_1H , Victim ) && victimInParade
-		 && victimAction != gEAction_PierceAttack && victimAction != gEAction_FinishingAttack
-		&& damagerAction == gEAction_PierceAttack ) {
-		if ( Victim.IsInFOV ( DamagerOwner ) ) {
-			return 1;
+		if ( victimInParade && victimAction != gEAction_HackAttack && victimAction != gEAction_PierceAttack
+			&& victimAction != gEAction_WhirlAttack && victimAction != gEAction_FinishingAttack
+			&& isMonsterDamager 
+			&& ( weaponLevel >= 2 
+				|| ( !isBigMonster ( DamagerOwner )
+				&& DamagerOwner.GetWeapon ( GETrue ) != None 
+				&& !DamagerOwner.GetWeapon ( GETrue ).GetName ( ).Contains ( "Fist" ) ) ) ) {
+			if ( Victim.IsInFOV ( DamagerOwner ) ) {
+				return 1;
+			}
 		}
 	}
 

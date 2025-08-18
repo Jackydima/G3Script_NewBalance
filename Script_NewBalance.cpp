@@ -24,6 +24,7 @@ void LoadSettings ( ) {
     }
     if ( config.ReadFile ( "newbalance.ini" ) ) {
         useNewBalanceMagicWeapon = config.GetBool ( "Script" , "UseNewBalanceMagicWeapon" , useNewBalanceMagicWeapon );
+        useExtendedBlocking = config.GetBool ( "Script" , "UseExtendedBlocking" , useExtendedBlocking );
         useHardCoreAttacks = config.GetBool ( "Script" , "UseHardCoreAttacks" , useHardCoreAttacks );
         useDamagingInnosLight = config.GetBool ( "Script" , "UseDamagingInnosLight" , useDamagingInnosLight );
         useNewStaminaRecovery = config.GetBool ( "Script" , "UseNewStaminaRecovery" , useNewStaminaRecovery );
