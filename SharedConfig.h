@@ -18,8 +18,8 @@ extern GEU32 uniqueLevel;
 extern GEU32 eliteLevel;
 extern GEU32 warriorLevel;
 extern GEU32 noviceLevel;
-extern GEU32 KnockDownThreshold;
 
+extern GEInt KnockDownThreshold;
 extern GEBool useHardCoreAttacks;
 extern GEBool useDamagingInnosLight;
 extern GEBool useNewBalanceMagicWeapon;
@@ -51,28 +51,28 @@ extern GEFloat NPCDamageReductionMultiplicator;
 extern GEInt poiseThreshold;
 extern GEFloat npcArenaSpeedMultiplier;
 extern GEFloat npcWeaponDamageMultiplier;
-extern GEU32 staminaRecoveryDelay;
-extern GEU32 staminaRecoveryPerTick;
+extern GEInt staminaRecoveryDelay;
+extern GEInt staminaRecoveryPerTick;
 extern GEFloat fMonsterDamageMultiplicator; // Default 0.5
 extern GEDouble npcArmorMultiplier;
 extern GEDouble playerArmorMultiplier;
-extern GEU32 startSTR;
-extern GEU32 startDEX;
+extern GEInt startSTR;
+extern GEInt startDEX;
 extern GEDouble attackRangeAI;
 extern GEDouble telekinesisRange;
 extern GEDouble shootVelocity;
 extern GEDouble NPC_AIM_INACCURACY;
 extern GEDouble ATTACK_REACH_MULTIPLIER;
-extern GEU32 elementalPerkBonusResistance;
+extern GEInt elementalPerkBonusResistance;
 
 extern GEFloat animationSpeedBonusMid;
 extern GEFloat animationSpeedBonusHigh;
 
-extern GEU32 blessedBonus;
-extern GEU32 sharpBonus;
+extern GEInt blessedBonus;
+extern GEInt sharpBonus;
 extern GEBool useSharpPercentage;
-extern GEU32 forgedBonus;
-extern GEU32 wornPercentageMalus;
+extern GEInt forgedBonus;
+extern GEInt wornPercentageMalus;
 
 //
 // 

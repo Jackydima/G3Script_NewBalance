@@ -1007,7 +1007,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         && !Victim.Interaction.GetSpell ( ).GetName ( ).Contains ( "Cure" ) )
     {
         // If a special attack, or any strong attack-force is executed against the caster
-        if ( gEAction_HackAttack != DamagerOwnerAction && 4 > HitForce && !isHeadshot ) // PierceAttack is already filtered out above
+        if ( gEAction_HackAttack != DamagerOwnerAction && gEAction_PierceAttack != DamagerOwnerAction && 4 > HitForce && !isHeadshot )
         {
             ScriptAdmin.CallScriptFromScript ( "PipiStumble" , &Victim , &None , 0 ); // Make Noice without Stumbles
             return gEAction_Stumble;
