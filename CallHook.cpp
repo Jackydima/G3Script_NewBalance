@@ -10,6 +10,9 @@ static mCCallHook Hook_FixDualOneHanded;
 void FixDualOneHanded ( gCScriptProcessingUnit* p_PSU ) {
 	Entity self = p_PSU->GetSelfEntity ( );
 
+	if (!CheckHandUseTypesNB(gEUseType_1H, gEUseType_1H, self)) {
+		return;
+	}
 	Entity rightHandWeapon = self.Inventory.GetItemFromSlot ( gESlot_RightHand );
 	rightHandWeapon.TouchDamage.ClearTriggeredList ( );
 

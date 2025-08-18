@@ -11,6 +11,8 @@ GEInt OnPowerAim_Loop ( gCScriptProcessingUnit* p_PSU );
 
 GEInt UpdateHitPointsOnTick ( Entity p_entity );
 
+GEInt GE_STDCALL MagicPoison ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs );
+
 GEInt GE_STDCALL CanParade ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs );
 
 GEInt GE_STDCALL AddHitPoints ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs );

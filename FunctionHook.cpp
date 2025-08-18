@@ -247,6 +247,22 @@ void ResetHitPointsRegen ( Entity& p_entity ) {
 	LastHealthDamageMap[p_entity.GetGameEntity ( )->GetID ( ).GetText ( )] = Entity::GetWorldEntity ( ).Clock.GetTimeStampInSeconds ( );
 }
 
+GEInt GE_STDCALL MagicPoison ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEU32 a_iArgs ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+
+	Entity spell = Self.Interaction.GetSpell ( );
+
+	if ( CanBePoisoned ( a_pSPU , &Other , &spell , a_iArgs ) ) {
+		auto damageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( Other.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
+		damageReceiver->AccessPoisonDamage() = GetPoisonDamage ( Self );
+		Other.NPC.EnableStatusEffects ( gEStatusEffect_Poisoned, GETrue );
+	}
+
+	GetScriptAdmin ( ).CallScriptFromScript ( "AssessTarget" , &Other , &Self , gEAttackReason_ReactToDamage );
+	
+	return 1;
+}
+
 static mCFunctionHook Hook_AddHitPoints;
 GEInt GE_STDCALL AddHitPoints ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs ) {
 	INIT_SCRIPT_EXT ( Self , Other );
@@ -1319,6 +1335,10 @@ void HookFunctions ( ) {
 	else {
 		Hook_CanFreeze.Hook ( GetScriptAdminExt ( ).GetScript ( "CanFreeze" )->m_funcScript , &CanFreezeAddition , mCBaseHook::mEHookType_OnlyStack );
 	}
+
+	static mCFunctionHook Hook_MagicPoison;
+	Hook_MagicPoison.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicPoison" )->m_funcScript , &MagicPoison );
+
 	static mCFunctionHook Hook_CanBePoisoned;
 	Hook_CanBePoisoned.Hook ( GetScriptAdminExt ( ).GetScript ( "CanBePoisoned" )->m_funcScript , &CanBePoisoned );
 
