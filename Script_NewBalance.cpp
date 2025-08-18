@@ -41,14 +41,14 @@ void LoadSettings ( ) {
         SpecialAttackArmorPen = config.GetFloat ( "Script" , "SpecialAttackArmorPen" , SpecialAttackArmorPen );
         NPCStrengthMultiplicator = config.GetFloat ( "Script" , "NPCStrengthMultiplicator" , NPCStrengthMultiplicator );
         NPCStrengthCorrection = config.GetFloat ( "Script" , "NPCStrengthCorrection" , NPCStrengthCorrection );
-        elementalPerkBonusResistance = config.GetU32 ( "Script" , "ElementalPerkBonusResistance" , elementalPerkBonusResistance );
+        elementalPerkBonusResistance = config.GetInt ( "Script" , "ElementalPerkBonusResistance" , elementalPerkBonusResistance );
         animationSpeedBonusMid = config.GetFloat ( "Script" , "BowAnimationSpeedBonusMid" , animationSpeedBonusMid );
         animationSpeedBonusHigh = config.GetFloat ( "Script" , "BowAnimationSpeedBonusHigh" , animationSpeedBonusHigh );
 
         NPCDamageReductionMultiplicator = config.GetFloat ( "Script" , "NPCDamageReductionMultiplicator" , NPCDamageReductionMultiplicator );
         poiseThreshold = config.GetInt ( "Script" , "PoiseThreshold" , poiseThreshold );
-        staminaRecoveryDelay = config.GetU32 ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
-        staminaRecoveryPerTick = config.GetU32 ( "Script" , "StaminaRecoveryPerTick" , staminaRecoveryPerTick );
+        staminaRecoveryDelay = config.GetInt ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
+        staminaRecoveryPerTick = config.GetInt ( "Script" , "StaminaRecoveryPerTick" , staminaRecoveryPerTick );
         npcArmorMultiplier = config.GetFloat( "Script" , "NPCProtectionMultiplier" , npcArmorMultiplier );
         playerArmorMultiplier = config.GetFloat( "Script" , "PlayerProtectionMultiplier" , playerArmorMultiplier );
         npcWeaponDamageMultiplier = config.GetFloat( "Script" , "NPCWeaponDamageMultiplier" , npcWeaponDamageMultiplier );
@@ -58,13 +58,13 @@ void LoadSettings ( ) {
         shootVelocity = config.GetFloat ( "Script" , "ProjectileVelocity" , shootVelocity );
         NPC_AIM_INACCURACY = config.GetFloat ( "Script" , "NPCAimInaccuracy" , NPC_AIM_INACCURACY );
         ATTACK_REACH_MULTIPLIER = config.GetFloat ( "Script" , "AttackReachMultiplier" , ATTACK_REACH_MULTIPLIER );
-        startSTR = config.GetU32 ( "Script" , "StartSTR" , startSTR );
-        startDEX = config.GetU32( "Script" , "StartDEX" , startDEX );
-        blessedBonus = config.GetU32 ( "Script" , "BlessedBonus" , blessedBonus );
-        sharpBonus = config.GetU32 ( "Script" , "SharpBonus" , sharpBonus );
+        startSTR = config.GetInt ( "Script" , "StartSTR" , startSTR );
+        startDEX = config.GetInt ( "Script" , "StartDEX" , startDEX );
+        blessedBonus = config.GetInt ( "Script" , "BlessedBonus" , blessedBonus );
+        sharpBonus = config.GetInt ( "Script" , "SharpBonus" , sharpBonus );
         useSharpPercentage = config.GetBool ( "Script" , "UseSharpPercentage" , useSharpPercentage );
-        forgedBonus = config.GetU32 ( "Script" , "ForgedBonus" , forgedBonus );
-        wornPercentageMalus = config.GetU32 ( "Script" , "WornMalus" , wornPercentageMalus );
+        forgedBonus = config.GetInt ( "Script" , "ForgedBonus" , forgedBonus );
+        wornPercentageMalus = config.GetInt ( "Script" , "WornMalus" , wornPercentageMalus );
         npcArenaSpeedMultiplier = config.GetFloat ( "Script" , "NPCArenaSpeedMultiplier" , npcArenaSpeedMultiplier );
         enableNPCSprint = config.GetBool ( "Script" , "EnableNPCSprint" , enableNPCSprint );
         zombiesCanSprint = config.GetBool ( "Script" , "ZombiesCanSprint" , zombiesCanSprint );
@@ -79,7 +79,7 @@ void LoadSettings ( ) {
         eliteLevel = config.GetU32 ( "Script" , "EliteLevelCap" , eliteLevel );
         warriorLevel = config.GetU32 ( "Script" , "WarriorLevelCap" , warriorLevel );
         noviceLevel = config.GetU32 ( "Script" , "NoviceLevelCap" , noviceLevel );
-        KnockDownThreshold = config.GetU32 ( "Script" , "KnockDownThreshold" , KnockDownThreshold );
+        KnockDownThreshold = config.GetInt ( "Script" , "KnockDownThreshold" , KnockDownThreshold );
     }
 }
 
@@ -228,11 +228,13 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         HitForce = static_cast< gEHitForce >( ActionWeaponLevel - GetShieldLevelBonusNB ( Victim ) );
         HitForce = static_cast< gEHitForce >(HitForce - getHyperArmorPoints(Victim, VictimAction));
 
-        if ((GEInt)HitForce <= poiseThreshold )
+        print ( "ActionWeaponLevel: %d\tShieldLevelBonus: %d\tgetHyperArmorPoints: %d\n" , ActionWeaponLevel , GetShieldLevelBonusNB ( Victim ) , getHyperArmorPoints ( Victim , VictimAction ) );
+
+        if (HitForce <= poiseThreshold )
         {
             HitForce = gEHitForce_Minimal;
         }
-        else if ((GEInt)HitForce <= gEHitForce_Normal)
+        else if (HitForce <= gEHitForce_Normal)
         {
             HitForce = gEHitForce_Normal;
         }
@@ -249,11 +251,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
             isHeadshot = GETrue;
         }
     }
-    // New Hyperarmor for New Balancing Spells
-    if ( DamagerOwnerAction != gEAction_PierceAttack && DamagerOwnerAction != gEAction_HackAttack && DamagerOwnerAction != gEAction_Summon 
-       && !VictimItemTemplateName.Contains("Heal") && !isHeadshot ) {
-        HitForce = static_cast< gEHitForce >( HitForce - GetHyperActionBonus ( VictimAction ) ); // Or just always use Minimum Hitforce, for simplicity
-    }
+
     GEInt FinalDamage = iWeaponDamage;
 
     // Headshot? -> Double damage
@@ -315,6 +313,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
                 //New Scaling
                 if ( useNewBalanceMeleeScaling ) {
+                    // TODO Use another Function for this bloaded if else statements (returns better)
                     //GEChar* arr = nullptr; 
                     bCString reqAttributeTag = "";
                     Entity Weapon = Player.GetWeapon ( GETrue );
@@ -324,7 +323,26 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                         bCString reqAttributeTag = item->AccessReqAttrib1Tag ( );
                     }
                     //if ( arr != nullptr ) reqAttributeTag = bCString ( arr );
-                    if ( playerRightWeaponType == gEUseType_1H && Player.Inventory.GetUseType ( leftWeaponStackIndex ) == gEUseType_1H ) {
+                    if ( playerRightWeaponType == gEUseType_Staff || reqAttributeTag.Contains ( "INT" )
+                         || ( DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ) != None
+                             && DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).IsItem ( )
+                             && DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).Item.GetQuality ( ) & ( gEItemQuality_Burning | gEItemQuality_Frozen ) ) ) {
+
+                        if ( ( playerRightWeaponType == gEUseType_1H && Player.Inventory.GetUseType ( leftWeaponStackIndex ) == gEUseType_1H )
+                            || reqAttributeTag.Contains ( "DEX" ) ) {
+                            iAttributeBonusDamage = static_cast< GEInt >( dexterity * 0.3 + intelligence * 0.35 + 15 ); // Because you start with low Int, (Assume 60 INT)
+                        }
+                        else if ( playerRightWeaponType == gEUseType_Staff ) {
+                            iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + intelligence * 0.4 + 15 ); // Because you start with low Int, (Assume 60 INT)
+                        }
+                        else if ( playerRightWeaponType == gEUseType_2H || playerRightWeaponType == gEUseType::gEUseType_Axe || playerRightWeaponType == gEUseType::gEUseType_Pickaxe ) {
+                            iAttributeBonusDamage = static_cast< GEInt >( strength * 0.3 + intelligence * 0.35 + 15 ); // Because you start with low Int, (Assume 60 INT)
+                        }
+                        else {
+                            iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + intelligence * 0.4 + 15 ); // Because you start with low Int, (Assume 60 INT)
+                        }
+                    }
+                    else if ( playerRightWeaponType == gEUseType_1H && Player.Inventory.GetUseType ( leftWeaponStackIndex ) == gEUseType_1H ) {
                         iAttributeBonusDamage = static_cast< GEInt >( strength * 0.3 + dexterity * 0.35 );
                     }
                     else if ( reqAttributeTag.Contains ( "DEX" ) ) {
@@ -335,12 +353,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                     }
                     else if ( playerRightWeaponType == gEUseType::gEUseType_Axe || playerRightWeaponType == gEUseType::gEUseType_Pickaxe ) {
                         iAttributeBonusDamage = static_cast< GEInt >( strength * 0.6 );
-                    }
-                    else if ( playerRightWeaponType == gEUseType_Staff || reqAttributeTag.Contains ( "INT" )
-                         || (DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ) != None
-                             && DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).IsItem()
-                             && DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).Item.GetQuality ( ) & ( gEItemQuality_Burning | gEItemQuality_Frozen )) ) {
-                        iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + intelligence * 0.4 + 15 ); // Because you start with low Int, (Assume 60 INT)
                     }
                     else {
                         iAttributeBonusDamage = strength / 2;
@@ -678,20 +690,31 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && GetHeldWeaponCategoryNB (Victim) == gEWeaponCategory_Melee
             && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectileNB ( Damager ) && !IsSpellContainerNB ( Damager )) )) 
     {
-        GEInt FinalDamage3 = FinalDamage / -2;
+        GEFloat staminaDamageMultiplier = -0.5f;
         // Reduce damage if parading melee with shield
-        if ( CheckHandUseTypesNB ( gEUseType_Shield , gEUseType_1H , Victim ) )
+        if ( Victim == Player && CheckHandUseTypesNB ( gEUseType_Shield , gEUseType_1H , Victim ) )
         {
-            if ( Victim != Player || !Victim.Inventory.IsSkillActive ( "Perk_Shield_2" ) )
+            if ( !Victim.Inventory.IsSkillActive ( "Perk_Shield_2" ) )
             {
                 // Weicht von "Detaillierte Schadenberechnung" ab, dort wird ein Faktor von 2/3 anstatt 0.5 beschrieben.
-                FinalDamage3 *= 0.6f;
+                staminaDamageMultiplier *= 0.6f;
             }
             else
             {
-                FinalDamage3 *= 0.4f;
+                staminaDamageMultiplier *= 0.4f;
             }
         }
+        else {
+            // NPC now always get less Stamina consumption (they really block often and the pc hero does much more damage than an npc still)
+            // , right now they also don't use consumables, Hopefully soon :)
+            staminaDamageMultiplier *= 0.5f; // 0.25
+            if ( CheckHandUseTypesNB ( gEUseType_Shield , gEUseType_1H , Victim ) ) {
+                staminaDamageMultiplier *= 0.5f; // 0.125
+            }
+        }
+        print ( "StaminaDamageMultiplier: %f\n" , staminaDamageMultiplier );
+        GEInt FinalDamage3 = FinalDamage * staminaDamageMultiplier;
+        print ( "FinalDamage3: %d\n" , FinalDamage3 );
 
         if ( enablePerfectBlock && GetHeldWeaponCategoryNB( DamagerOwner ) == gEWeaponCategory_Melee && ( !playerOnlyPerfectBlock || Victim.IsPlayer ( ) ) ) {
 
@@ -776,7 +799,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         if ( iStaminaRemaining > 0 )
             iStaminaRemaining = 0;
         ScriptAdmin.CallScriptFromScript ( "AddStaminaPoints" , &Victim , &None , FinalDamage3 );
-        //Changed back the remaining raw Damage after Def. Reductuion and Stamina consumption#
+        //Changed back the remaining raw Damage after Def. Reduction and Stamina consumption
         GEInt healthDamage = iStaminaRemaining * 2;
         if ( FinalDamage != 0 )
             healthDamage = iStaminaRemaining * 2 * FinalDamage2 / FinalDamage;
@@ -977,8 +1000,22 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
     // Freeze Reduced Timer on Hit
 
+    // Magic Casting Protection!
+    if ( gEAction_Summon == Victim.Routine.GetProperty<PSRoutine::PropertyAction>()
+        && 0.5f < Victim.Routine.GetStateTime ( ) // Delay the protection a bit
+        && !Victim.Interaction.GetSpell ( ).GetName ( ).Contains ( "Heal" )
+        && !Victim.Interaction.GetSpell ( ).GetName ( ).Contains ( "Cure" ) )
+    {
+        // If a special attack, or any strong attack-force is executed against the caster
+        if ( gEAction_HackAttack != DamagerOwnerAction && 4 > HitForce && !isHeadshot ) // PierceAttack is already filtered out above
+        {
+            ScriptAdmin.CallScriptFromScript ( "PipiStumble" , &Victim , &None , 0 ); // Make Noice without Stumbles
+            return gEAction_Stumble;
+        }
+    }
+
     // Scream or make HitEffect, but no Stumble also processes logic when you hit someone, like setting up combat mode
-    if ( HitForce <= gEHitForce_Minimal 
+    if ( ( GEInt )HitForce <= gEHitForce_Minimal
         && ( GetHeldWeaponCategoryNB ( DamagerOwner ) == gEWeaponCategory_Ranged || IsInActiveAttack( Victim ) ) )
     {
         if ( VictimAction == gEAction_PierceStumble ) {
@@ -992,7 +1029,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
     if ( GetHeldWeaponCategoryNB ( Victim ) != gEWeaponCategory_None && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 ))
     {
-        if ( HitForce >= KnockDownThreshold /* && GetHeldWeaponCategoryNB ( Victim ) == gEWeaponCategory_Melee */) //Remove
+        if ( (GEInt)HitForce >= KnockDownThreshold /* && GetHeldWeaponCategoryNB ( Victim ) == gEWeaponCategory_Melee */) //Remove
         {
             Victim.Routine.FullStop ( );
             Victim.Routine.SetTask ( "ZS_SitKnockDown" );
