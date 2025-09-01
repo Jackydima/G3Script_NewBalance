@@ -58,6 +58,9 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 			&& Player.NPC.GetProperty<PSNpc::PropertyLastHitTimestamp>() >= 120 ) 
 		{
 			multiPlier *= 1.5;
+			// Every Rage decreases the RageMode a bit!
+			GEInt newTimeStamp = Player.NPC.GetProperty<PSNpc::PropertyLastHitTimestamp> ( ) - 10;
+			Player.NPC.AccessProperty<PSNpc::PropertyLastHitTimestamp> ( ) = Max ( 0 , newTimeStamp );
 		}
 	}
 
