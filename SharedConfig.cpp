@@ -16,7 +16,9 @@ GEU32 warriorLevel = 30;
 GEU32 noviceLevel = 20;
 
 GEInt KnockDownThreshold = 5;
+GEInt MonsterRageModus = 0;
 
+GEBool onlyHeaveAttackKnockDown = GEFalse;
 GEBool useHardCoreAttacks = GETrue;
 GEBool useExtendedBlocking = GEFalse;
 GEBool useDamagingInnosLight = GETrue;

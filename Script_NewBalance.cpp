@@ -23,6 +23,7 @@ void LoadSettings ( ) {
         fMonsterDamageMultiplicator = config.GetFloat ( bCString ( "Game" ) , bCString ( "Game.MonsterDamageMultiplicator" ) , fMonsterDamageMultiplicator );
     }
     if ( config.ReadFile ( "newbalance.ini" ) ) {
+        onlyHeaveAttackKnockDown = config.GetBool ( "Script" , "OnlyHeaveAttackKnockDown" , onlyHeaveAttackKnockDown );
         useNewBalanceMagicWeapon = config.GetBool ( "Script" , "UseNewBalanceMagicWeapon" , useNewBalanceMagicWeapon );
         useExtendedBlocking = config.GetBool ( "Script" , "UseExtendedBlocking" , useExtendedBlocking );
         useHardCoreAttacks = config.GetBool ( "Script" , "UseHardCoreAttacks" , useHardCoreAttacks );
@@ -48,6 +49,7 @@ void LoadSettings ( ) {
 
         NPCDamageReductionMultiplicator = config.GetFloat ( "Script" , "NPCDamageReductionMultiplicator" , NPCDamageReductionMultiplicator );
         poiseThreshold = config.GetInt ( "Script" , "PoiseThreshold" , poiseThreshold );
+        MonsterRageModus = config.GetInt ( "Script" , "MonsterRageModus" , MonsterRageModus );
         staminaRecoveryDelay = config.GetInt ( "Script" , "StaminaRecoveryDelay" , staminaRecoveryDelay );
         staminaRecoveryPerTick = config.GetInt ( "Script" , "StaminaRecoveryPerTick" , staminaRecoveryPerTick );
         npcArmorMultiplier = config.GetFloat( "Script" , "NPCProtectionMultiplier" , npcArmorMultiplier );
@@ -1032,9 +1034,15 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     {
         if ( (GEInt)HitForce >= KnockDownThreshold /* && GetHeldWeaponCategoryNB ( Victim ) == gEWeaponCategory_Melee */) //Remove
         {
-            Victim.Routine.FullStop ( );
-            Victim.Routine.SetTask ( "ZS_SitKnockDown" );
-            return gEAction_SitKnockDown;
+            if ( !onlyHeaveAttackKnockDown
+                || DamagerOwnerAction == gEAction_HackAttack
+                || DamagerOwnerAction == gEAction_PowerAttack
+                || DamagerOwnerAction == gEAction_WhirlAttack ) 
+            {
+                Victim.Routine.FullStop ( );
+                Victim.Routine.SetTask ( "ZS_SitKnockDown" );
+                return gEAction_SitKnockDown;
+            }
         }
 
         if ( HitForce < gEHitForce_Heavy )

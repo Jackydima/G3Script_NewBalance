@@ -11,6 +11,8 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 	GEBool isArenaNPC = entity != Entity::GetPlayer ( ) && entity.NPC.GetProperty<PSNpc::PropertyAttackReason> ( ) == gEAttackReason_Arena;
 	GEFloat multiPlier = 1.0;
 	GEBool isHumanInFistMode = GetScriptAdmin ( ).CallScriptFromScript ( "IsHumanoid" , &entity , &None ) && GetScriptAdmin ( ).CallScriptFromScript ( "IsInFistMode" , &entity , &None );
+
+	Entity Player = Entity::GetPlayer ( );
 	
 	// New Perfect Block Vulnerability
 	auto damageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( entity.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
@@ -48,6 +50,18 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 
 	if ( isArenaNPC )
 		multiPlier *= npcArenaSpeedMultiplier; // default 1.25
+
+	// Alternative MonsterRage Mode, Monsters are just faster now!
+	if ( MonsterRageModus != 0 && MonsterRageModus != 1 ) {
+		if ( entity.NPC.GetCurrentTarget ( ) == Player 
+			&& CanRage(entity)
+			&& Player.NPC.GetProperty<PSNpc::PropertyLastHitTimestamp>() >= 120 ) 
+		{
+			multiPlier *= 1.5;
+		}
+	}
+
+
 	switch ( action ) {
 	case gEAction_FinishingAttack:
 	case gEAction_SitKnockDown:
@@ -59,7 +73,7 @@ GEFloat GetAnimationSpeedModifier ( Entity entity , GEU32 u32 ) {
 		return 1;
 	case gEAction_Aim:
 	case gEAction_Reload:
-		if ( entity == Entity::GetPlayer ( ) ) {
+		if ( entity == Player ) {
 			if ( entity.Inventory.IsSkillActive ( "Perk_Bow_3" ) ) {
 				return animationSpeedBonusHigh;
 			}
@@ -340,17 +354,16 @@ GEInt GE_STDCALL CanParade ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEnt
 	INIT_SCRIPT_EXT ( Victim , DamagerOwner );
 
 	GEBool canParadeMoveOf = GetScriptAdmin ( ).CallScriptFromScript ( "CanParadeMoveOf" , &Victim , &DamagerOwner , 0 );
-	GEBool isMonsterDamager = !GetScriptAdmin ( ).CallScriptFromScript ( "IsHumanoid" , &DamagerOwner , &None , 0 );
-	GEBool victimInParade = GetScriptAdmin ( ).CallScriptFromScript ( "IsInParadeMode" , &Victim , &None , 0 );
 	gEAction victimAction = Victim.Routine.GetProperty<PSRoutine::PropertyAction> ( );
+	GEBool isMonsterDamager = !GetScriptAdmin ( ).CallScriptFromScript ( "IsHumanoid" , &DamagerOwner , &None , 0 );
 	gEAction damagerAction = DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction> ( );
+	GEBool victimInParade = GetScriptAdmin ( ).CallScriptFromScript ( "IsInParadeMode" , &Victim , &None , 0 );
 
 	/*
 		Special Request Change
 	*/
 
 	if ( useExtendedBlocking ) {
-
 		gEUseType rightWeaponUseType = Victim.Inventory.GetItemFromSlot ( gESlot_RightHand ).Interaction.GetUseType ( );
 
 		// Special return true for Blocking Hackattacks with a 2H Weapon, Axe, Halbert, Staff

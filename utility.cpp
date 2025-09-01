@@ -42,6 +42,24 @@ void DoAOEDamage ( Entity& p_damager , Entity& p_victim ) {
     }
 }
 
+GEBool CanRage ( Entity& p_entity ) {
+    switch ( p_entity.NPC.GetProperty<PSNpc::PropertySpecies> ( ) ) {
+        case gESpecies_Human:
+        case gESpecies_Skeleton:
+        case gESpecies_Demon:
+        case gESpecies_Orc:
+        case gESpecies_Zombie:
+        case gESpecies_Ogre :
+        case gESpecies_ScorpionKing:
+        case gESpecies_Stalker:
+        case gESpecies_Minecrawler:
+            return GEFalse;
+        default:
+            break;
+    }
+    return GETrue;
+}
+
 GEBool IsInActiveAttack ( Entity& p_entity ) {
     if ( p_entity == None || !p_entity.Routine.IsValid() )
         return GEFalse;

@@ -42,6 +42,15 @@ static void PatchNOPs ( LPVOID addr , DWORD size ) {
 void PatchCode ( ) {
 
     DWORD currProt , newProt;
+
+    /**
+    * Disable SprintAttack, when Monsters are Enraged 
+    */
+    // MonsterRageModus is alternative or disabled!
+    if ( MonsterRageModus != 1 ) {
+        PatchNOPs ( ( LPVOID )RVA_ScriptGame ( 0x4f10a ) , 0x4f10f - 0x4f10a );
+    }
+
     /**
     * New AI Range for Ranged and Magic Attacks
     */
@@ -100,11 +109,13 @@ void PatchCode ( ) {
     /**
     * Remove the Limiter on Block for the Player via simple Bytejmp patch
     */
-    BYTE patchcode[] = { 0xE9,0x2B,0x02,0x00,0x00 };
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x63365 - 0x63359 , PAGE_EXECUTE_READWRITE , &currProt );
-    memset ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x90 , 0x63365 - 0x63359 );
-    memcpy ( ( LPVOID )RVA_ScriptGame ( 0x6335f ) , patchcode , sizeof ( patchcode ) / sizeof ( BYTE ) );
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x63365 - 0x63359 , currProt , &newProt );
+    if ( !useStaticBlocks ) {
+        BYTE patchcode[] = { 0xE9,0x2B,0x02,0x00,0x00 };
+        VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x63365 - 0x63359 , PAGE_EXECUTE_READWRITE , &currProt );
+        memset ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x90 , 0x63365 - 0x63359 );
+        memcpy ( ( LPVOID )RVA_ScriptGame ( 0x6335f ) , patchcode , sizeof ( patchcode ) / sizeof ( BYTE ) );
+        VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0x63359 ) , 0x63365 - 0x63359 , currProt , &newProt );
+    }
 
     /**
     * Change the Protection Multiplier for NPCs to npcArmorMultiplier (1.2)
@@ -142,10 +153,11 @@ void PatchCode ( ) {
     * Fists had no CollisionShapes, and therefore could not get registered
     * They only hit the "Current Target"
     */
+    /*
     VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xaa5e6 ) , 0xaa5eb - 0xaa5e6 , PAGE_EXECUTE_READWRITE , &currProt );
     memset ( ( LPVOID )RVA_ScriptGame ( 0xaa5e6 ) , 0x90 , 3 ); // Remove cmp Instr.
     memset ( ( LPVOID )RVA_ScriptGame ( 0xaa5e9 ) , 0xEB , 1 ); // Change jne (0x75) to jmp (0xEB)
-    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xaa5e6 ) , 0xaa5eb - 0xaa5e6 , currProt , &newProt );
+    VirtualProtect ( ( LPVOID )RVA_ScriptGame ( 0xaa5e6 ) , 0xaa5eb - 0xaa5e6 , currProt , &newProt );*/
     
     /**
     * Adjust the QualityBonuses
