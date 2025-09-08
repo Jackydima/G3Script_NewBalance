@@ -1274,32 +1274,33 @@ void MagicPartyMemberRemover ( Entity p_summoner ) {
 		return;
 	}
 
+	Entity PartyMember = None;
+
 	for ( GEInt i = 0; i < partyMembers.GetCount ( ); i++ ) {
-		Entity ent = partyMembers.GetAt ( i );
-		gEPartyMemberType pMT = ent.Party.GetProperty<PSParty::PropertyPartyMemberType> ( );
+		PartyMember = partyMembers.GetAt ( i );
+		gEPartyMemberType pMT = PartyMember.Party.GetProperty<PSParty::PropertyPartyMemberType> ( );
 
 		if ( pMT == gEPartyMemberType_Controlled ) {
-			bCUnicodeString partyMemberName = ent.GetFocusName ( );
+			bCUnicodeString partyMemberName = PartyMember.GetFocusName ( );
 			eCLocString printText = eCLocString("GO_ControlDismiss");
 			bCUnicodeString visualText = printText.GetString ( );
 			visualText.Replace ( L"$(name)" , partyMemberName );
 			gui2.PrintGameMessage ( visualText , gEGameMessageType_Failure );
-			ent.Party.SetPartyLeader ( None );
-			if ( ent.Navigation.IsInProcessingRange ( ) ) {
-				ent.Routine.ContinueRoutine ( );
+			PartyMember.Party.SetPartyLeader ( None );
+			if ( PartyMember.Navigation.IsInProcessingRange ( ) ) {
+				PartyMember.Routine.ContinueRoutine ( );
 			}
-			break;
+			continue;
 		}
 
 		if ( pMT == gEPartyMemberType_Summoned ) {
-			ent.Routine.FullStop ( );
-			ent.Routine.SetTask ( "ZS_RagDollDead" );
-			ent.Party.SetPartyLeader ( None );
-			ent.Party.AccessProperty<PSParty::PropertyWaiting>() = GEFalse;
-			if ( !ent.Navigation.IsInProcessingRange ( ) ) {
-				ent.Routine.AccessProperty<PSRoutine::PropertyAIMode> ( ) = gEAIMode_Dead;
+			PartyMember.Routine.FullStop ( );
+			PartyMember.Routine.SetTask ( "ZS_RagDollDead" );
+			PartyMember.Party.SetPartyLeader ( None );
+			PartyMember.Party.AccessProperty<PSParty::PropertyWaiting>() = GEFalse;
+			if ( !PartyMember.Navigation.IsInProcessingRange ( ) ) {
+				PartyMember.Routine.AccessProperty<PSRoutine::PropertyAIMode> ( ) = gEAIMode_Dead;
 			}
-			break;
 		}
 	}
 }
