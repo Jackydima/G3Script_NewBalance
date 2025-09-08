@@ -603,12 +603,22 @@ void GE_STDCALL StartTransform ( Entity* p_targetEntity , GEFloat p_duration , G
 		
 	// Stats must be in PlayerMem for some reason ... 
 	// Either do it here, or adjust all the Other things
-	player.PlayerMemory.SetHitPointsMax(p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 20);
-	player.PlayerMemory.SetHitPoints(p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 20);
-	player.PlayerMemory.SetManaPointsMax(p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 10);
-	player.PlayerMemory.SetManaPoints (p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 10);
-	player.PlayerMemory.SetStaminaPointsMax(p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 10);
-	player.PlayerMemory.SetStaminaPoints (p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 10);
+	GEInt healthStat = static_cast< GEInt >( p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 20 );
+	if ( healthStat < 200 ) {
+		healthStat = 200;
+	}
+
+	GEInt otherAttributStat = static_cast< GEInt > ( p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * 10 );
+	if ( otherAttributStat < 100 ) {
+		otherAttributStat = 100;
+	}
+
+	player.PlayerMemory.SetHitPointsMax( healthStat );
+	player.PlayerMemory.SetHitPoints( healthStat );
+	player.PlayerMemory.SetManaPointsMax( otherAttributStat );
+	player.PlayerMemory.SetManaPoints ( otherAttributStat );
+	player.PlayerMemory.SetStaminaPointsMax( otherAttributStat );
+	player.PlayerMemory.SetStaminaPoints ( otherAttributStat );
 
 	if ( hasManaRegen ) {
 		p_targetEntity->Inventory.AssureItemsEx ( "It_Perk_MasterMage" , 0 , 1 , -1 , GETrue );
