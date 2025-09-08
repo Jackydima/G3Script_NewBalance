@@ -1322,6 +1322,27 @@ GEInt MagicSummonArmyOfDarkness ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSe
 	return 1;
 }
 
+GEInt GE_STDCALL CleanUpPlunderInv ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEI32 a_iArgs ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+
+	// Remove Weapons of Demons and Remove Weapons of Summoned Creatures!
+	if ( Self.NPC.Species == gESpecies_Demon || Self.Party.PartyMemberType == gEPartyMemberType_Summoned ) {
+		for ( GEInt i = Self.Inventory.GetStackCount ( ) - 1; i >= 0; i-- ) {
+			if ( Self.Inventory.UnEquipStack ( i ) ) {
+				Self.Inventory.DeleteStack ( i );
+			}
+		}
+	}
+
+	// Do not generate Items from Summoned Monsters!
+	if ( Self.Party.PartyMemberType == gEPartyMemberType_Summoned ) {
+		return GETrue;
+	}
+
+	Self.Inventory.GeneratePlunderInvFromTreasureSets ( );
+	return GETrue;
+}
+
 void HookFunctions ( ) {
 	if ( enableNewMagicAiming ) {
 		Hook_MagicProjectile
@@ -1334,6 +1355,9 @@ void HookFunctions ( ) {
 			.Prepare ( RVA_Game ( 0x152650 ) , &OnTouch , mCBaseHook::mEHookType_ThisCall )
 			.Hook ( );
 	}
+
+	static mCFunctionHook Hook_CleanUpPlunderInv;
+	Hook_CleanUpPlunderInv.Hook ( GetScriptAdminExt ( ).GetScript ( "CleanUpPlunderInv" )->m_funcScript , &CleanUpPlunderInv );
 
 	static mCFunctionHook Hook_MagicSummonArmyOfDarkness;
 	Hook_MagicSummonArmyOfDarkness.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSummonArmyOfDarkness" )->m_funcScript , &MagicSummonArmyOfDarkness );
