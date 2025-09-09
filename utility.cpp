@@ -127,10 +127,12 @@ GEBool IsInActiveAttack ( Entity& p_entity ) {
     return GEFalse;
 }
 
-void PartyMonsterSpawn ( Entity& p_summoner , Template& p_summonTemplate , GEInt p_int1 , GEBool suppressEffect ) {
+void PartyMonsterSpawn ( Entity& p_summoner , Template& p_summonTemplate , GEInt p_int1 , GEBool suppressEffect, GEFloat multiplicator ) {
     Entity Spell = p_summoner.Interaction.GetSpell ( );
     bCMatrix pose = p_summoner.GetPose ( );
     Entity Spawn = Entity::Spawn ( p_summonTemplate , pose );
+    Spawn.NPC.AccessProperty<PSNpc::PropertyLevelMax> ( ) = static_cast< GEInt >( Spawn.NPC.GetProperty<PSNpc::PropertyLevelMax> ( ) * multiplicator );
+    Spawn.NPC.AccessProperty<PSNpc::PropertyLevel> ( ) = static_cast< GEInt >( Spawn.NPC.GetProperty<PSNpc::PropertyLevel> ( ) * multiplicator );
     bCMatrix newPose;
     Spawn.Interaction.SetOwner ( p_summoner );
     if ( !Spawn.FindSpawnPose ( newPose , p_summoner , GETrue , p_int1 )) {

@@ -1278,14 +1278,14 @@ void OnTouch ( eCEntity* p_entity , eCContactIterator* p_contactIterator ) {
 	}
 }
 
-void MagicPartyMemberRemoverNew ( Entity& p_summoner, Template& p_monsterSummon ) {
+void MagicPartyMemberRemoverNew ( Entity& p_summoner , Template& p_monsterSummon , GEFloat multiplicator = 1.0f ) {
 	auto partyMembers = p_summoner.Party.GetMembers ( GEFalse );
 	if ( partyMembers.GetCount ( ) == 0 ) {
 		return;
 	}
 
 	Entity PartyMember = None;
-	GEInt combinedLevel = static_cast< GEInt >( static_cast< Entity >( p_monsterSummon ).NPC.GetProperty<PSNpc::PropertyLevelMax>() * summoningLevelMultiplier );
+	GEInt combinedLevel = static_cast< GEInt >( static_cast< Entity >( p_monsterSummon ).NPC.GetProperty<PSNpc::PropertyLevelMax>() * summoningLevelMultiplier * multiplicator );
 	GEInt playerMaxMana = GetScriptAdminExt().CallScriptFromScript( "GetManaPointsMax", &p_summoner , &None );
 
 	for ( GEInt iPartyMember = partyMembers.GetCount ( ) - 1; iPartyMember >= 0 ; iPartyMember-- ) {
@@ -1403,19 +1403,17 @@ DECLARE_SCRIPT ( MagicSummonSkeleton ) {
 	return 1;
 }
 
-DECLARE_SCRIPT ( MagicSummonCompanion ) {
+DECLARE_SCRIPT ( MagicSummonCompanion ) { 
 	INIT_SCRIPT_EXT ( Self , Other );
 
 	Template Spawn = Self.Interaction.GetSpell ( ).Magic.GetSpawn ( ).GetTemplate ( );
+	GEFloat multiplicator = 1.0f;
 	if ( Self.IsPlayer ( ) && GetScriptAdminExt ( ).CallScriptFromScript ( "GetIntelligence" , &Self , &None ) >= 300 ) {
-		Entity newSpawn = Spawn;
-		newSpawn.NPC.AccessProperty<PSNpc::PropertyLevel> ( ) = static_cast< GEInt >( newSpawn.NPC.AccessProperty<PSNpc::PropertyLevel> ( ) * 1.5 );
-		newSpawn.NPC.AccessProperty<PSNpc::PropertyLevelMax> ( ) = static_cast< GEInt >( newSpawn.NPC.AccessProperty<PSNpc::PropertyLevelMax> ( ) * 1.5 );
-		Spawn = newSpawn.GetTemplate();
+		multiplicator = 1.5f;
 	}
-	MagicPartyMemberRemoverNew ( Self , Spawn );
+	MagicPartyMemberRemoverNew ( Self , Spawn, multiplicator );
 
-	PartyMonsterSpawn ( Self , Spawn , 0 , GEFalse );
+	PartyMonsterSpawn ( Self , Spawn , 0 , GEFalse, multiplicator );
 	return 1;
 }
 
