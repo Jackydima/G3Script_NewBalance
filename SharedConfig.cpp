@@ -18,6 +18,10 @@ GEU32 noviceLevel = 20;
 GEInt KnockDownThreshold = 5;
 GEInt MonsterRageModus = 0;
 
+GEFloat summoningLevelMultiplier = 7.5f;
+
+GEBool newSummoning = GETrue;
+GEBool vanishSummons = GETrue;
 GEBool onlyHeaveAttackKnockDown = GEFalse;
 GEBool useHardCoreAttacks = GETrue;
 GEBool useExtendedBlocking = GEFalse;

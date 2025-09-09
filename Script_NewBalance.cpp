@@ -23,6 +23,8 @@ void LoadSettings ( ) {
         fMonsterDamageMultiplicator = config.GetFloat ( bCString ( "Game" ) , bCString ( "Game.MonsterDamageMultiplicator" ) , fMonsterDamageMultiplicator );
     }
     if ( config.ReadFile ( "newbalance.ini" ) ) {
+        newSummoning = config.GetBool ( "Script" , "NewSummoning" , newSummoning );
+        vanishSummons = config.GetBool ( "Script" , "VanishSummons" , vanishSummons );
         onlyHeaveAttackKnockDown = config.GetBool ( "Script" , "OnlyHeaveAttackKnockDown" , onlyHeaveAttackKnockDown );
         useNewBalanceMagicWeapon = config.GetBool ( "Script" , "UseNewBalanceMagicWeapon" , useNewBalanceMagicWeapon );
         useExtendedBlocking = config.GetBool ( "Script" , "UseExtendedBlocking" , useExtendedBlocking );
@@ -36,6 +38,8 @@ void LoadSettings ( ) {
         adjustXPReceive = config.GetBool ( "Script" , "AdjustXPReceive" , adjustXPReceive );
         useStaticBlocks = config.GetBool ( "Script" , "UseStaticBlocks" , useStaticBlocks );
         useStrengthForCrossbows = config.GetBool ( "Script" , "UseStrengthForCrossbows" , useStrengthForCrossbows );
+
+        summoningLevelMultiplier = config.GetFloat ( "Script" , "SummoningLevelMultiplier" , summoningLevelMultiplier );
 
         PerfectBlockDamageMult = config.GetFloat ( "Script" , "PerfectBlockDamageMult" , PerfectBlockDamageMult );
         PowerAttackArmorPen = config.GetFloat ( "Script" , "PowerAttackArmorPen" , PowerAttackArmorPen );

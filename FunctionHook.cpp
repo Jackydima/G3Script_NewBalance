@@ -1278,21 +1278,23 @@ void OnTouch ( eCEntity* p_entity , eCContactIterator* p_contactIterator ) {
 	}
 }
 
-void MagicPartyMemberRemover ( Entity p_summoner ) {
+void MagicPartyMemberRemoverNew ( Entity& p_summoner, Template& p_monsterSummon ) {
 	auto partyMembers = p_summoner.Party.GetMembers ( GEFalse );
 	if ( partyMembers.GetCount ( ) == 0 ) {
 		return;
 	}
 
 	Entity PartyMember = None;
+	GEInt combinedLevel = static_cast< GEInt >( static_cast< Entity >( p_monsterSummon ).NPC.GetProperty<PSNpc::PropertyLevelMax>() * summoningLevelMultiplier );
+	GEInt playerMaxMana = GetScriptAdminExt().CallScriptFromScript( "GetManaPointsMax", &p_summoner , &None );
 
-	for ( GEInt i = 0; i < partyMembers.GetCount ( ); i++ ) {
-		PartyMember = partyMembers.GetAt ( i );
+	for ( GEInt iPartyMember = partyMembers.GetCount ( ) - 1; iPartyMember >= 0 ; iPartyMember-- ) {
+		PartyMember = partyMembers[iPartyMember];
 		gEPartyMemberType pMT = PartyMember.Party.GetProperty<PSParty::PropertyPartyMemberType> ( );
 
 		if ( pMT == gEPartyMemberType_Controlled ) {
 			bCUnicodeString partyMemberName = PartyMember.GetFocusName ( );
-			eCLocString printText = eCLocString("GO_ControlDismiss");
+			eCLocString printText = eCLocString ( "GO_ControlDismiss" );
 			bCUnicodeString visualText = printText.GetString ( );
 			visualText.Replace ( L"$(name)" , partyMemberName );
 			gui2.PrintGameMessage ( visualText , gEGameMessageType_Failure );
@@ -1304,30 +1306,132 @@ void MagicPartyMemberRemover ( Entity p_summoner ) {
 		}
 
 		if ( pMT == gEPartyMemberType_Summoned ) {
+			if ( PartyMember.Navigation.IsInProcessingRange ( ) == GEFalse ) {
+				PartyMember.Routine.FullStop ( );
+				PartyMember.Routine.SetTask ( "ZS_RagDollDead" );
+
+				PartyMember.Party.SetPartyLeader ( None );
+				PartyMember.Party.AccessProperty<PSParty::PropertyWaiting>() = GEFalse;
+
+				PartyMember.Routine.AccessProperty<PSRoutine::PropertyAIMode>() = gEAIMode_Dead;
+				continue;
+			}
+
+			// More Summons only for the Player now
+			if ( p_summoner.IsPlayer() ) {
+				// Check if the Mana Potential is enough to hold on to this Monster-Summon
+				GEInt currentLevelAdd = static_cast< GEInt >( PartyMember.NPC.GetProperty<PSNpc::PropertyLevelMax>() * summoningLevelMultiplier );
+				if ( ( combinedLevel + currentLevelAdd ) <= playerMaxMana ) {
+					combinedLevel += currentLevelAdd;
+					continue;
+				}
+			}
+			
 			PartyMember.Routine.FullStop ( );
 			PartyMember.Routine.SetTask ( "ZS_RagDollDead" );
+
 			PartyMember.Party.SetPartyLeader ( None );
-			PartyMember.Party.AccessProperty<PSParty::PropertyWaiting>() = GEFalse;
-			if ( !PartyMember.Navigation.IsInProcessingRange ( ) ) {
-				PartyMember.Routine.AccessProperty<PSRoutine::PropertyAIMode> ( ) = gEAIMode_Dead;
-			}
+			PartyMember.Party.AccessProperty<PSParty::PropertyWaiting> ( ) = GEFalse;
 		}
 	}
+}
+
+DECLARE_SCRIPT ( MagicSummonDemon ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+
+	Template Spawn = "Demon";
+	if ( Self.IsPlayer ( ) && GetScriptAdminExt ( ).CallScriptFromScript ( "GetIntelligence" , &Self , &None ) >= 350 ) {
+		Spawn = "DemonLord";
+		if ( !Spawn.IsValid ( ) ) {
+			Spawn = "Demon";
+		}
+	}
+
+	MagicPartyMemberRemoverNew ( Self , Spawn );
+
+	PartyMonsterSpawn ( Self , Spawn , 0 , GEFalse );
+	return 1;
+}
+
+DECLARE_SCRIPT ( MagicSummonGoblin ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+
+	Template Spawn = "Goblin";
+	if ( Self.IsPlayer ( ) && GetScriptAdminExt ( ).CallScriptFromScript ( "GetIntelligence" , &Self , &None ) >= 250 ) {
+		Spawn = "GoblinWarrior";
+		if ( !Spawn.IsValid ( ) ) {
+			Spawn = "BlackGoblin";
+		}
+	} else if ( Self.IsPlayer ( ) && GetScriptAdminExt ( ).CallScriptFromScript ( "GetIntelligence" , &Self , &None ) >= 150 ) {
+		Spawn = "BlackGoblin";
+	}
+	MagicPartyMemberRemoverNew ( Self , Spawn );
+
+	PartyMonsterSpawn ( Self , Spawn , 0 , GEFalse );
+	return 1;
+}
+
+DECLARE_SCRIPT ( MagicSummonGolem ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+
+	Template Spawn = "Golem";
+	if ( Self.IsPlayer ( ) && GetScriptAdminExt ( ).CallScriptFromScript ( "GetIntelligence" , &Self , &None ) >= 350 ) {
+		Spawn = "GolemStrong";
+		if ( !Spawn.IsValid ( ) ) {
+			Spawn = "Golem";
+		}
+	}
+	MagicPartyMemberRemoverNew ( Self , Spawn );
+
+	PartyMonsterSpawn ( Self , Spawn , 0 , GEFalse );
+	return 1;
+}
+
+DECLARE_SCRIPT ( MagicSummonSkeleton ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+
+	Template Spawn = "Skeleton_Sword";
+		if ( Self.IsPlayer ( ) && GetScriptAdminExt ( ).CallScriptFromScript ( "GetIntelligence" , &Self , &None ) >= 250 ) {
+			Spawn = "SkeletonWarrior";
+			if ( !Spawn.IsValid ( ) ) {
+				Spawn = "Skeleton_Sword";
+			}
+		}
+	MagicPartyMemberRemoverNew ( Self , Spawn );
+
+	PartyMonsterSpawn ( Self , Spawn , 0 , GEFalse );
+	return 1;
+}
+
+DECLARE_SCRIPT ( MagicSummonCompanion ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+
+	Template Spawn = Self.Interaction.GetSpell ( ).Magic.GetSpawn ( ).GetTemplate ( );
+	if ( Self.IsPlayer ( ) && GetScriptAdminExt ( ).CallScriptFromScript ( "GetIntelligence" , &Self , &None ) >= 300 ) {
+		Entity newSpawn = Spawn;
+		newSpawn.NPC.AccessProperty<PSNpc::PropertyLevel> ( ) = static_cast< GEInt >( newSpawn.NPC.AccessProperty<PSNpc::PropertyLevel> ( ) * 1.5 );
+		newSpawn.NPC.AccessProperty<PSNpc::PropertyLevelMax> ( ) = static_cast< GEInt >( newSpawn.NPC.AccessProperty<PSNpc::PropertyLevelMax> ( ) * 1.5 );
+		Spawn = newSpawn.GetTemplate();
+	}
+	MagicPartyMemberRemoverNew ( Self , Spawn );
+
+	PartyMonsterSpawn ( Self , Spawn , 0 , GEFalse );
+	return 1;
 }
 
 GEInt MagicSummonArmyOfDarkness ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelfEntity , Entity* a_pOtherEntity , GEInt p_args ) {
 	INIT_SCRIPT_EXT ( Self , Other );
 	GEInt amount = 4;
-	GEInt position = 1;
+	GEInt position = 0;
 	using MSR = void( * )( Entity p_entity);
 	MSR MonsterSpawnRemover = (MSR) RVA_ScriptGame ( 0x54770 );
 	MonsterSpawnRemover ( Self );
-	PartyMonsterSpawn ( Self , Template ( "LivingAncestor_Summon_01" ) , position++ , 0 );
 
 	for ( GEInt i = 0; i < amount; i++ ) {
-		PartyMonsterSpawn ( Self , Template ( "Skeleton" ) , position++ , 0 );
-		PartyMonsterSpawn ( Self , Template ( "SlaveZombie" ) , position++ , 0 );
+		PartyMonsterSpawn ( Self , Template ( "ArmyOfDarknessSpawn1" ) , position++ , GEFalse );
+		PartyMonsterSpawn ( Self , Template ( "ArmyOfDarknessSpawn2" ) , position++ , GEFalse );
 	}
+	PartyMonsterSpawn ( Self , Template ( "ArmyOfDarknessBoss" ) , position++ , GEFalse );
 
 	return 1;
 }
@@ -1353,6 +1457,77 @@ GEInt GE_STDCALL CleanUpPlunderInv ( gCScriptProcessingUnit* a_pSPU , Entity* a_
 	return GETrue;
 }
 
+DECLARE_SCRIPT ( DropHandItems ) {
+	INIT_SCRIPT_EXT ( Self , Other );
+
+	GEBool decay = GEFalse;
+	if ( Self.Party.PartyMemberType == gEPartyMemberType_Summoned || Self.NPC.Species == gESpecies_Demon ) {
+		decay = GETrue;
+	}
+	Entity LeftHandItem = Self.Inventory.GetItemFromSlot ( gESlot_LeftHand );
+	Entity RightHandItem = Self.Inventory.GetItemFromSlot ( gESlot_RightHand );
+
+	if ( GetScriptAdminExt ( ).CallScriptFromScript ( "IsDroppableWeapon" , &LeftHandItem , &None ) ) {
+		Entity droppedItem = Self.Inventory.DropItemsFromSlot ( gESlot_LeftHand, 1 );
+		if ( decay )
+			droppedItem.Decay ( );
+	}
+
+	if ( GetScriptAdminExt ( ).CallScriptFromScript ( "IsDroppableWeapon" , &RightHandItem , &None ) ) {
+		Entity droppedItem = Self.Inventory.DropItemsFromSlot ( gESlot_RightHand, 1 );
+		if ( decay )
+			droppedItem.Decay ( );
+	}
+
+	Self.Inventory.HoldStacks ( -1 , -1 );
+
+	if ( Self.IsPlayer ( ) ) {
+		using Func = void ( Entity , GEInt , GEInt );
+		Func* func = ( Func* )RVA_ScriptGame ( 0x2e50 );
+		func ( Entity::GetPlayer ( ) , -1 , -1 );
+	}
+	return 1;
+}
+
+static mCFunctionHook Hook_ZS_RagdollDeadAddition;
+GEBool ZS_RagdollDeadAddition ( bTObjStack<gScriptRunTimeSingleState>& a_rRunTimeStack , gCScriptProcessingUnit* a_pSPU ) {
+	/*INIT_SCRIPT_STATE ();
+	gCScriptAdminExt& ScriptAdmin = GetScriptAdminExt ( );
+
+	ScriptAdmin.CallScriptFromScript ( "SetHitPoints" , &SelfEntity , &None, 0 );
+
+	if ( SelfEntity.Routine.AIMode == gEAIMode_Down ) {
+		SelfEntity.Routine.SetTask ( "ZS_Dead" );
+		return GETrue;
+	}
+
+	if ( ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &SelfEntity , &None ) ) {
+		SelfEntity.StartSaySVM ( SelfEntity , "DEAD" , GEFalse );
+	}
+	else {
+		bCString effectName = "";
+		if ( SelfEntity.Animation.GetSkeletonName ( effectName ) ) {
+			EffectSystem::StartEffect ( "eff_creature_" + effectName + "_die_01" , SelfEntity );
+		}
+	}
+
+	Entity attacker = SelfEntity.NPC.GetCurrentAttacker ( );
+
+	ScriptAdmin.CallScriptFromScript ( "Kill" , &attacker , &SelfEntity );
+
+	SelfEntity.CharacterMovement.SetMovementMode ( gECharMovementMode_RagDollDead );
+
+
+	//END
+	return GETrue;*/
+	GEBool retValue = Hook_ZS_RagdollDeadAddition.GetOriginalFunction ( &ZS_RagdollDeadAddition )( a_rRunTimeStack , a_pSPU );
+	Entity Self = a_pSPU->GetSelfEntity ( );
+	if ( Self.Party.GetProperty<PSParty::PropertyPartyMemberType> ( ) == gEPartyMemberType_Summoned ) {
+		VanishEntity ( Self );
+	}
+	return retValue;
+}
+
 void HookFunctions ( ) {
 	if ( enableNewMagicAiming ) {
 		Hook_MagicProjectile
@@ -1366,16 +1541,32 @@ void HookFunctions ( ) {
 			.Hook ( );
 	}
 
+	if ( vanishSummons ) {
+		Hook_ZS_RagdollDeadAddition
+			.Prepare ( RVA_ScriptGame ( 0x1c4a0 ) , &ZS_RagdollDeadAddition )
+			.Hook ( );
+	}
+
+	if ( newSummoning ) {
+		static mCFunctionHook Hook_MagicSummonDemon;
+		Hook_MagicSummonDemon.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSummonDemon" )->m_funcScript , &MagicSummonDemon );
+		static mCFunctionHook Hook_MagicSummonGolem;
+		Hook_MagicSummonDemon.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSummonGolem" )->m_funcScript , &MagicSummonGolem );
+		static mCFunctionHook Hook_MagicSummonGoblin;
+		Hook_MagicSummonDemon.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSummonGoblin" )->m_funcScript , &MagicSummonGoblin );
+		static mCFunctionHook Hook_MagicSummonSkeleton;
+		Hook_MagicSummonDemon.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSummonSkeleton" )->m_funcScript , &MagicSummonSkeleton );
+		static mCFunctionHook Hook_MagicSummonCompanion;
+		Hook_MagicSummonDemon.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSummonCompanion" )->m_funcScript , &MagicSummonCompanion );
+		static mCFunctionHook Hook_MagicSummonArmyOfDarkness;
+		Hook_MagicSummonArmyOfDarkness.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSummonArmyOfDarkness" )->m_funcScript , &MagicSummonArmyOfDarkness );
+	}
+
 	static mCFunctionHook Hook_CleanUpPlunderInv;
 	Hook_CleanUpPlunderInv.Hook ( GetScriptAdminExt ( ).GetScript ( "CleanUpPlunderInv" )->m_funcScript , &CleanUpPlunderInv );
 
-	static mCFunctionHook Hook_MagicSummonArmyOfDarkness;
-	Hook_MagicSummonArmyOfDarkness.Hook ( GetScriptAdminExt ( ).GetScript ( "MagicSummonArmyOfDarkness" )->m_funcScript , &MagicSummonArmyOfDarkness );
-
-	static mCFunctionHook Hook_MagicPartyMemberRemover;
-	Hook_MagicPartyMemberRemover.Prepare ( RVA_ScriptGame ( 0x54770 ) , &MagicPartyMemberRemover )
-		.Hook ( );
-		
+	static mCFunctionHook Hook_DropHandItems;
+	Hook_DropHandItems.Hook ( GetScriptAdminExt ( ).GetScript ( "DropHandItems" )->m_funcScript , &DropHandItems );
 
 	static mCFunctionHook Hook_CanBurn;
 	GetScriptAdmin ( ).LoadScriptDLL ( "Script_G3Fixes.dll" );

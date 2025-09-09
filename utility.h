@@ -33,10 +33,12 @@ enum WarriorType {
 
 
 std::vector<bCString> splitTobCStrings ( const std::string str , char delim );
+void MagicPartyMemberRemover ( Entity p_summoner );
+void VanishEntity ( Entity& p_entity );
 void DoAOEDamage ( Entity& p_damager , Entity& p_victim );
 GEBool CanRage ( Entity& p_entity );
 GEBool IsInActiveAttack ( Entity& p_entity );
-void PartyMonsterSpawn ( Entity& p_summoner, Template& p_summonTemplate, GEInt p_int1, GEInt p_int2);
+void PartyMonsterSpawn ( Entity& p_summoner, Template& p_summonTemplate, GEInt p_int1, GEBool suppressEffect );
 GEInt getPowerLevel ( Entity& p_entity );
 gEWeaponCategory GetHeldWeaponCategoryNB ( Entity const& a_Entity );
 Template getProjectile ( Entity& p_entity , gEUseType p_rangedWeaponType );

@@ -20,6 +20,42 @@ std::vector<bCString> splitTobCStrings ( const std::string str , char delim ) {
     return result;
 }
 
+void MagicPartyMemberRemover ( Entity p_summoner ) {
+    auto partyMembers = p_summoner.Party.GetMembers ( GEFalse );
+    if ( partyMembers.GetCount ( ) == 0 ) {
+        return;
+    }
+
+    Entity PartyMember = None;
+    for ( GEInt i = 0; i < partyMembers.GetCount ( ); i++ ) {
+        PartyMember = partyMembers.GetAt ( i );
+        gEPartyMemberType pMT = PartyMember.Party.GetProperty<PSParty::PropertyPartyMemberType> ( );
+
+        if ( pMT == gEPartyMemberType_Controlled ) {
+            bCUnicodeString partyMemberName = PartyMember.GetFocusName ( );
+            eCLocString printText = eCLocString ( "GO_ControlDismiss" );
+            bCUnicodeString visualText = printText.GetString ( );
+            visualText.Replace ( L"$(name)" , partyMemberName );
+            gui2.PrintGameMessage ( visualText , gEGameMessageType_Failure );
+            PartyMember.Party.SetPartyLeader ( None );
+            if ( PartyMember.Navigation.IsInProcessingRange ( ) ) {
+                PartyMember.Routine.ContinueRoutine ( );
+            }
+            continue;
+        }
+
+        if ( pMT == gEPartyMemberType_Summoned ) {
+            PartyMember.Routine.FullStop ( );
+            PartyMember.Routine.SetTask ( "ZS_RagDollDead" );
+            PartyMember.Party.SetPartyLeader ( None );
+            PartyMember.Party.AccessProperty<PSParty::PropertyWaiting> ( ) = GEFalse;
+            if ( !PartyMember.Navigation.IsInProcessingRange ( ) ) {
+                PartyMember.Routine.AccessProperty<PSRoutine::PropertyAIMode> ( ) = gEAIMode_Dead;
+            }
+        }
+    }
+}
+
 void DoAOEDamage ( Entity& p_damager , Entity& p_victim ) {
     auto entityList = p_damager.GetEntitiesByDistance ( );
     //print("ListNum: %d\n",entityList.GetCount ( ));
@@ -40,6 +76,12 @@ void DoAOEDamage ( Entity& p_damager , Entity& p_victim ) {
         //print ( "DoDamage !! to %s\n",entry.GetName().GetText() );
         entry.DoDamage ( p_damager , damageAmount , p_damager.Damage.GetProperty<PSDamage::PropertyDamageType> ( ) );
     }
+}
+
+void VanishEntity ( Entity& p_entity ) {
+    EffectSystem::StartEffect ( "eff_remove_summons" , p_entity );
+    // Completely Remove Entity!
+    p_entity.Kill ( ); 
 }
 
 GEBool CanRage ( Entity& p_entity ) {
@@ -85,7 +127,7 @@ GEBool IsInActiveAttack ( Entity& p_entity ) {
     return GEFalse;
 }
 
-void PartyMonsterSpawn ( Entity& p_summoner , Template& p_summonTemplate , GEInt p_int1 , GEInt p_int2 ) {
+void PartyMonsterSpawn ( Entity& p_summoner , Template& p_summonTemplate , GEInt p_int1 , GEBool suppressEffect ) {
     Entity Spell = p_summoner.Interaction.GetSpell ( );
     bCMatrix pose = p_summoner.GetPose ( );
     Entity Spawn = Entity::Spawn ( p_summonTemplate , pose );
@@ -98,7 +140,7 @@ void PartyMonsterSpawn ( Entity& p_summoner , Template& p_summonTemplate , GEInt
     }
     Spawn.MoveTo ( newPose );
 
-    if ( p_int2 == 0 ) {
+    if ( suppressEffect == GEFalse ) {
         bCString effectString = Spell.Magic.GetProperty<PSMagic::PropertyEffectTargetCast> ( );
         EffectSystem::StartEffect ( effectString , Spawn );
     }
@@ -115,6 +157,9 @@ void PartyMonsterSpawn ( Entity& p_summoner , Template& p_summonTemplate , GEInt
     else {
         gEPoliticalAlignment pA = p_summoner.NPC.GetProperty<PSNpc::PropertyPoliticalAlignment> ( );
         Spawn.NPC.AccessProperty<PSNpc::PropertyPoliticalAlignment> ( ) = pA;
+        Entity enclave = p_summoner.NPC.GetEnclave ( );
+        Spawn.NPC.SetEnclave ( enclave );
+
         Entity Player = Entity::GetPlayer ( );
         if ( Player != None ) {
             if ( Player.GetDistanceTo ( Spawn ) <= 2000.0f ) {
@@ -125,8 +170,6 @@ void PartyMonsterSpawn ( Entity& p_summoner , Template& p_summonTemplate , GEInt
             Spawn.Kill ( );
         }
     }
-
-
 }
 
 // SDK Function

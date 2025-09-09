@@ -22,6 +22,10 @@ extern GEU32 noviceLevel;
 extern GEInt KnockDownThreshold;
 extern GEInt MonsterRageModus;
 
+extern GEFloat summoningLevelMultiplier;
+
+extern GEBool newSummoning;
+extern GEBool vanishSummons;
 extern GEBool onlyHeaveAttackKnockDown;
 extern GEBool useExtendedBlocking;
 extern GEBool useHardCoreAttacks;
