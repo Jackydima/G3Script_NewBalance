@@ -327,16 +327,16 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                     if ( Weapon != None && Weapon.Item.IsValid() ) {
                         //arr = ( GEChar* )*( DWORD* )( *( DWORD* )&Weapon.Item + 0x74 ); // A bit Unsafe ... AccessReqAttrib1Tag()
                         gCItem_PS* item = ( gCItem_PS* )Weapon.Item.m_pEngineEntityPropertySet;
-                        bCString reqAttributeTag = item->AccessReqAttrib1Tag ( );
+                        reqAttributeTag = item->GetReqAttrib1Tag ( );
                     }
                     //if ( arr != nullptr ) reqAttributeTag = bCString ( arr );
-                    if ( playerRightWeaponType == gEUseType_Staff || reqAttributeTag.Contains ( "INT" )
+                    if ( playerRightWeaponType == gEUseType_Staff || reqAttributeTag == "INT"
                          || ( DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ) != None
                              && DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).IsItem ( )
                              && DamagerOwner.Inventory.GetItemFromSlot ( gESlot_RightHand ).Item.GetQuality ( ) & ( gEItemQuality_Burning | gEItemQuality_Frozen ) ) ) {
 
                         if ( ( playerRightWeaponType == gEUseType_1H && Player.Inventory.GetUseType ( leftWeaponStackIndex ) == gEUseType_1H )
-                            || reqAttributeTag.Contains ( "DEX" ) ) {
+                            || reqAttributeTag == "DEX" ) {
                             iAttributeBonusDamage = static_cast< GEInt >( dexterity * 0.3 + intelligence * 0.35 + 15 ); // Because you start with low Int, (Assume 60 INT)
                         }
                         else if ( playerRightWeaponType == gEUseType_Staff ) {
@@ -352,7 +352,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
                     else if ( playerRightWeaponType == gEUseType_1H && Player.Inventory.GetUseType ( leftWeaponStackIndex ) == gEUseType_1H ) {
                         iAttributeBonusDamage = static_cast< GEInt >( strength * 0.3 + dexterity * 0.35 );
                     }
-                    else if ( reqAttributeTag.Contains ( "DEX" ) ) {
+                    else if ( reqAttributeTag == "DEX" ) {
                         iAttributeBonusDamage = static_cast< GEInt >( strength * 0.2 + dexterity * 0.4 );
                     }
                     else if ( playerRightWeaponType == gEUseType_2H ) {
@@ -692,7 +692,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     // Can parade meele?
     else if ( !Victim.NPC.IsFrozen ( )
         && ( ScriptAdmin.CallScriptFromScript ( "CanParade" , &Victim , &DamagerOwner , 0 )
-        || ( Victim.Routine.GetStateTime ( ) < 0.1f && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade )
+        || ( Victim.Routine.GetStateTime ( ) < 0.1f && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade && Victim.IsInFOV ( DamagerOwner ) )
             //This can maybe a good feature , when registering attacks right in the beginning
         || ( Victim.Routine.GetProperty<PSRoutine::PropertyAniState>() == gEAniState_SitKnockDown && GetHeldWeaponCategoryNB (Victim) == gEWeaponCategory_Melee
             && Victim.IsInFOV ( DamagerOwner ) && !IsNormalProjectileNB ( Damager ) && !IsSpellContainerNB ( Damager )) )) 
@@ -725,7 +725,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
         if ( enablePerfectBlock && GetHeldWeaponCategoryNB( DamagerOwner ) == gEWeaponCategory_Melee && ( !playerOnlyPerfectBlock || Victim.IsPlayer ( ) ) ) {
 
-            if ( lastHit > 12 && ( Victim.Routine.GetStateTime ( ) < 0.05
+            if ( lastHit > 12 && Victim.IsInFOV ( DamagerOwner ) && ( Victim.Routine.GetStateTime ( ) < 0.05
                 || ( DamagerOwnerAction != gEAction_PowerAttack && DamagerOwnerAction != gEAction_HackAttack && DamagerOwnerAction != gEAction_SprintAttack && Victim.Routine.GetStateTime ( ) < 0.1f ) )
                 && Victim.Routine.GetProperty<PSRoutine::PropertyAniState> ( ) == gEAniState_Parade ) {
                 PerfektBlockTimeStampMap[Victim.GetGameEntity ( )->GetID ( ).GetText ( )] = 0;
