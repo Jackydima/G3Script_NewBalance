@@ -45,7 +45,12 @@ GEBool enableNewMagicAiming = GETrue;
 GEBool enableAOEDamage = GETrue;
 std::vector<bCString> AOENames = {};
 
+GEFloat VulnerabilityWeak = 1.6f;
+GEFloat VulnerabilitySlightlyWeak = 1.2f;
+GEFloat VulnerabilityStrong = 0.5f;
+GEFloat VulnerabilitySlightlyStrong = 0.8f;
 GEFloat PerfectBlockDamageMult = 1.6f;
+GEFloat MissileAttackArmorPen = 0.1f;
 GEFloat PowerAttackArmorPen = 0.1f;
 GEFloat QuickAttackArmorRes = 0.05f;
 GEFloat SpecialAttackArmorPen = 0.125f;

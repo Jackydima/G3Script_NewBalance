@@ -41,7 +41,12 @@ void LoadSettings ( ) {
 
         summoningLevelMultiplier = config.GetFloat ( "Script" , "SummoningLevelMultiplier" , summoningLevelMultiplier );
 
+        VulnerabilityWeak = config.GetFloat ( "Script" , "VulnerabilityWeak" , VulnerabilityWeak );
+        VulnerabilitySlightlyWeak = config.GetFloat ( "Script" , "VulnerabilitySlightlyWeak" , VulnerabilitySlightlyWeak );
+        VulnerabilityStrong = config.GetFloat ( "Script" , "VulnerabilityStrong" , VulnerabilityStrong );
+        VulnerabilitySlightlyStrong = config.GetFloat ( "Script" , "VulnerabilitySlightlyStrong" , VulnerabilitySlightlyStrong );
         PerfectBlockDamageMult = config.GetFloat ( "Script" , "PerfectBlockDamageMult" , PerfectBlockDamageMult );
+        MissileAttackArmorPen = config.GetFloat ( "Script" , "MissileAttackArmorPen" , MissileAttackArmorPen );
         PowerAttackArmorPen = config.GetFloat ( "Script" , "PowerAttackArmorPen" , PowerAttackArmorPen );
         QuickAttackArmorRes = config.GetFloat ( "Script" , "QuickAttackArmorRes" , QuickAttackArmorRes );
         SpecialAttackArmorPen = config.GetFloat ( "Script" , "SpecialAttackArmorPen" , SpecialAttackArmorPen );
@@ -137,6 +142,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     auto victimDamageReceiver = static_cast< gCDamageReceiver_PS_Ext* >( Victim.GetGameEntity ( )->GetPropertySet ( eEPropertySetType_DamageReceiver ) );
 
     Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageAmount> ( ) = 0;
+    Victim.DamageReceiver.AccessProperty<PSDamageReceiver::PropertyDamageType> ( ) = Damager.Damage.GetProperty<PSDamage::PropertyDamageType>();
     Victim.NPC.SetLastAttacker ( Victim.NPC.GetCurrentAttacker ( ) );
     Victim.NPC.SetCurrentAttacker ( DamagerOwner );
 
@@ -493,16 +499,16 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     else {
         switch ( DamageTypeEntityTestNB ( Victim , Damager ) ) {
         case VulnerabilityStatus_WEAK:
-            FinalDamage *= 1.6f;
+            FinalDamage *= VulnerabilityWeak;
             break;
         case VulnerabilityStatus_STRONG:
-            FinalDamage *= 0.5f;
+            FinalDamage *= VulnerabilityStrong;
             break;
         case VulnerabilityStatus_SLIGHTLYWEAK:
-            FinalDamage *= 1.2f;
+            FinalDamage *= VulnerabilitySlightlyWeak;
             break;
         case VulnerabilityStatus_SLIGHTLYSTRONG:
-            FinalDamage *= 0.8f;
+            FinalDamage *= VulnerabilitySlightlyStrong;
             break;
         }
         if ( iProtection > 90 )
@@ -590,6 +596,11 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
         // Hackattacken ignorieren 12.5 % Rüstung
         FinalDamage2 = static_cast< GEInt >( FinalDamage2 * ( 1.0f - SpecialAttackArmorPen ) + FinalDamage * SpecialAttackArmorPen ) * 2;
         break;
+    }
+
+    // Add new Piercing Armor Penetration
+    if ( Damager.Damage.DamageType == gEDamageType_Missile ) {
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * ( 1.0f - MissileAttackArmorPen ) + FinalDamage * MissileAttackArmorPen ) * 2;
     }
 
     if ( victimDamageReceiver->GetVulnerableState ( ) == 2 ) {
@@ -868,10 +879,10 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
         // Wenn der Held bei Schwierigkeitsgrad "hoch" eine Fernkampfwaffe benutzt
         //  => Schaden = Schaden * 1,2
-        if ( Victim != Player && IsNormalProjectileNB ( Damager ) && Entity::GetCurrentDifficulty ( ) == EDifficulty_Hard )
+        /*if ( Victim != Player && IsNormalProjectileNB ( Damager ) && Entity::GetCurrentDifficulty ( ) == EDifficulty_Hard )
         {
             FinalDamage2 = static_cast< GEInt >( FinalDamage2 * 1.2f );
-        }
+        }*/
     }
 
     if ( IsNormalProjectileNB ( Damager ) && ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 ) )

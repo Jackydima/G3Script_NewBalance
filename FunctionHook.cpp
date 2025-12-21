@@ -566,7 +566,7 @@ void GE_STDCALL StartTransform ( Entity* p_targetEntity , GEFloat p_duration , G
 
 	GEInt playerLevel = Self.NPC.GetProperty<PSNpc::PropertyLevel>();
 	GEBool isDruid = Self.Inventory.IsSkillActive ( "Perk_Druid" );
-	GEBool isWaterMage = Self.Inventory.IsSkillActive ( "Perk_WaterMage" );
+	GEBool isWaterMage = Self.Inventory.IsSkillActive ( "Perk_Watermage" );
 	GEBool hasManaRegen = Self.Inventory.IsSkillActive ( "Perk_MasterMage" );
 	GEInt targetLevel = p_targetEntity->NPC.GetProperty<PSNpc::PropertyLevelMax> ( );
 
@@ -690,7 +690,21 @@ GEInt GE_STDCALL GetProtectionHUD ( gCScriptProcessingUnit* a_pSPU , Entity* a_p
 	GEInt protection = 0;
 	bCString protectionCheckString = "";
 
-	gEDamageType damageType = Other.Damage.GetProperty<PSDamage::PropertyDamageType> ( );
+	// Adjust Damage Type when attacker used Pierceattack with swords!
+	gEDamageType damageType = Other.Damage.GetProperty<PSDamage::PropertyDamageType>();
+	Entity DamagerOwner = Other.Interaction.GetOwner ( );
+	if ( DamagerOwner == None && Other.Navigation.IsValid ( ) )
+	{
+		DamagerOwner = Other;
+	}
+	
+	if ( DamagerOwner.Routine.IsValid ( ) && DamagerOwner.Routine.GetProperty<PSRoutine::PropertyAction>( ) == gEAction_PierceAttack ) {
+		if ( damageType == gEDamageType_Blade ) {
+			damageType = gEDamageType_Missile;
+		}
+	}
+	print ( "DamageType: %d\n" , damageType );
+
 	if ( Other == None ) {
 		switch ( a_iArgs ) {
 		case 13:

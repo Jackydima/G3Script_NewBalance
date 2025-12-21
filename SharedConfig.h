@@ -49,7 +49,12 @@ extern GEBool enableNewMagicAiming;
 extern GEBool enableAOEDamage;
 extern std::vector<bCString> AOENames;
 
+extern GEFloat VulnerabilityWeak;
+extern GEFloat VulnerabilitySlightlyWeak;
+extern GEFloat VulnerabilityStrong;
+extern GEFloat VulnerabilitySlightlyStrong;
 extern GEFloat PerfectBlockDamageMult;
+extern GEFloat MissileAttackArmorPen;
 extern GEFloat PowerAttackArmorPen;
 extern GEFloat QuickAttackArmorRes;
 extern GEFloat SpecialAttackArmorPen;
