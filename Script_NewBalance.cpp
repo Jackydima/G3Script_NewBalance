@@ -277,7 +277,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     if ( Player == DamagerOwner && !Player.NPC.IsTransformed ( ) )
     {
         // PC-ATTR-BONUS
-        GEInt iAttributeBonusDamage;
+        GEInt iAttributeBonusDamage = 0;
 
         // Magic damage
         if ( IsSpellContainerNB ( Damager ) )
@@ -548,8 +548,6 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     //
     // Schritt 3: Angriffsart
     //
-    if ( DamageTypeEntityTestNB ( Victim , Damager ) == VulnerabilityStatus_IMMUNE && FinalDamage2 > 5)
-        FinalDamage2 = 5;
 
     // Monster attacks Orc or Human (NPC)
     if ( ScriptAdmin.CallScriptFromScript ( "IsHumanoid" , &Victim , &None , 0 )
@@ -600,7 +598,7 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
 
     // Add new Piercing Armor Penetration
     if ( Damager.Damage.DamageType == gEDamageType_Missile ) {
-        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * ( 1.0f - MissileAttackArmorPen ) + FinalDamage * MissileAttackArmorPen ) * 2;
+        FinalDamage2 = static_cast< GEInt >( FinalDamage2 * ( 1.0f - MissileAttackArmorPen ) + FinalDamage * MissileAttackArmorPen );
     }
 
     if ( victimDamageReceiver->GetVulnerableState ( ) == 2 ) {
@@ -620,6 +618,9 @@ gEAction GE_STDCALL AssessHit ( gCScriptProcessingUnit* a_pSPU , Entity* a_pSelf
     }
 
     if ( FinalDamage2 < 5 )
+        FinalDamage2 = 5;
+
+    if ( DamageTypeEntityTestNB ( Victim , Damager ) == VulnerabilityStatus_IMMUNE && FinalDamage2 > 5 )
         FinalDamage2 = 5;
 
     //
